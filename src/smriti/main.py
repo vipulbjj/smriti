@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from .config import config
 from .cron import router as cron_router
 from .db import init_db
+from .landing import router as landing_router
 from .scheduler import start as start_scheduler
 from .webhook import router as webhook_router
 
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="smriti", version="0.2.0", lifespan=lifespan)
+app.include_router(landing_router)
 app.include_router(webhook_router)
 app.include_router(cron_router)
 
