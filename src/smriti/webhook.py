@@ -18,6 +18,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Re
 from fastapi.responses import PlainTextResponse
 from twilio.request_validator import RequestValidator
 
+from .commands import detect_command, handle_command
 from .config import config
 from .db import (
     Family,
@@ -143,6 +144,13 @@ async def whatsapp_webhook(
             logger.info("Duplicate MessageSid=%s from %s — ignoring", MessageSid, phone)
             return ""
 
+        # Command detection — runs before story processing
+        cmd = detect_command(Body)
+        if cmd:
+            logger.info("Command '%s' from %s", cmd, phone)
+            handle_command(cmd, gp)
+            return ""
+
         reply_text = Body.strip()
         voice_note_url = ""
         photo_url = ""
@@ -261,3 +269,19 @@ def _do_send_digest(story_id: int, grandparent_id: int, family_id: int,
         logger.info("Digest sent to grandchild for story %d", story_id)
     except Exception:
         logger.exception("Digest send failed for story %d", story_id)
+
+
+@router.post("/webhook/status", response_class=PlainTextResponse, include_in_schema=False)
+async def delivery_status(
+    MessageSid: str = Form(default=""),
+    MessageStatus: str = Form(default=""),
+    To: str = Form(default=""),
+    ErrorCode: str = Form(default=""),
+):
+    """Twilio delivery receipt callback. Set Status Callback URL in Twilio console."""
+    if ErrorCode:
+        logger.warning("Delivery failure SID=%s status=%s error=%s to=%s",
+                       MessageSid, MessageStatus, ErrorCode, To)
+    else:
+        logger.info("Delivery SID=%s status=%s to=%s", MessageSid, MessageStatus, To)
+    return ""

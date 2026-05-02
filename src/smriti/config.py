@@ -23,6 +23,11 @@ class Config:
     validate_twilio_signature: bool = os.environ.get("VALIDATE_TWILIO_SIGNATURE", "true").lower() == "true"
     books_dir: str = os.environ.get("BOOKS_DIR", "books")
     cron_secret: str = os.environ.get("CRON_SECRET", "")
+    admin_key: str = os.environ.get("ADMIN_KEY", "")
+    # ElevenLabs voice IDs per language (set after manual voice setup)
+    elevenlabs_voice_hindi: str = os.environ.get("ELEVENLABS_VOICE_HINDI", "ThT5KcBeYPX3keUQqHPh")   # Nicole
+    elevenlabs_voice_english: str = os.environ.get("ELEVENLABS_VOICE_ENGLISH", "21m00Tcm4TlvDq8ikWAM") # Rachel
+    elevenlabs_voice_punjabi: str = os.environ.get("ELEVENLABS_VOICE_PUNJABI", "ThT5KcBeYPX3keUQqHPh") # Nicole
 
 
 config = Config()

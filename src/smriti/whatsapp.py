@@ -27,6 +27,18 @@ def send_message(to_phone: str, body: str) -> str:
     return msg.sid
 
 
+def send_media_message(to_phone: str, body: str, media_url: str) -> str:
+    """Send a WhatsApp message with a media attachment (audio, video, image)."""
+    to = f"whatsapp:{to_phone}" if not to_phone.startswith("whatsapp:") else to_phone
+    msg = _client().messages.create(
+        from_=config.twilio_whatsapp_from,
+        to=to,
+        body=body,
+        media_url=[media_url],
+    )
+    return msg.sid
+
+
 def download_voice_note(media_url: str) -> bytes:
     """Download a voice note from Twilio media URL. Returns raw audio bytes."""
     with httpx.Client() as client:

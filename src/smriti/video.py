@@ -144,6 +144,107 @@ def submit_story_video(
         return None
 
 
+def submit_memoir_video(
+    family_id: int,
+    grandparent_name: str,
+    grandchild_name: str,
+    stories: list,
+) -> Optional[str]:
+    """
+    Submit a full memoir video — one clip per story, up to 15 stories.
+    Returns job_id or None.
+    """
+    if not config.shotstack_api_key:
+        return None
+
+    clips = []
+    colors = ["#FBF5EC", "#F0F4FF", "#FFF5F0", "#F0FFF4", "#FFF8F0"]
+    start = 0.0
+
+    # Opening title card — 5 seconds
+    clips.append({
+        "asset": {
+            "type": "title", "text": f"{grandparent_name}'s Memories",
+            "style": "minimal", "color": "#1C1917", "size": "large", "position": "center",
+        },
+        "start": 0, "length": 5,
+        "transition": {"in": "fade", "out": "fade"},
+    })
+    clips.append({
+        "asset": {
+            "type": "title", "text": f"A gift from {grandchild_name} · smriti",
+            "style": "minimal", "color": "#B45309", "size": "x-small", "position": "bottom",
+        },
+        "start": 0, "length": 5,
+    })
+    start = 5.0
+
+    for i, story in enumerate(stories[:15]):
+        bg = colors[i % len(colors)]
+        text = story.get("enhanced_text") or story.get("reply_text", "")
+        excerpt = _truncate(text, 200)
+        week = story.get("prompt_index", i) + 1
+        length = 12.0
+
+        clips += [
+            {
+                "asset": {"type": "shape", "shape": "rectangle",
+                          "width": 1.0, "height": 1.0, "fill": {"color": bg}},
+                "start": start, "length": length, "position": "center",
+            },
+            {
+                "asset": {
+                    "type": "title", "text": f"Week {week}",
+                    "style": "minimal", "color": "#B45309", "size": "x-small", "position": "top",
+                },
+                "start": start, "length": length,
+                "transition": {"in": "fade"},
+            },
+            {
+                "asset": {
+                    "type": "title", "text": f'"{excerpt}"',
+                    "style": "minimal", "color": "#1C1917", "size": "small", "position": "center",
+                },
+                "start": start + 0.5, "length": length - 1,
+                "transition": {"in": "fade", "out": "fade"},
+            },
+        ]
+        start += length
+
+    # Closing card
+    clips.append({
+        "asset": {
+            "type": "title", "text": f"{len(stories[:15])} memories · smriti",
+            "style": "minimal", "color": "#78716C", "size": "small", "position": "center",
+        },
+        "start": start, "length": 5,
+        "transition": {"in": "fade"},
+    })
+
+    payload = {
+        "timeline": {
+            "background": "#FBF5EC",
+            "tracks": [{"clips": clips}],
+        },
+        "output": {"format": "mp4", "resolution": "hd", "fps": 24},
+    }
+
+    try:
+        resp = httpx.post(
+            f"{_base_url()}/render",
+            headers=_headers(),
+            json=payload,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        job_id = resp.json()["response"]["id"]
+        logger.info("Memoir video job submitted: %s for family %d", job_id, family_id)
+        return job_id
+    except Exception:
+        logger.exception("Memoir video submission failed for family %d", family_id)
+        return None
+
+
 def get_video_url(job_id: str) -> Optional[str]:
     """Poll Shotstack for a completed render. Returns URL or None if not ready/failed."""
     if not config.shotstack_api_key or not job_id:

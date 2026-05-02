@@ -48,10 +48,12 @@ def cron_poll_videos(request: Request):
 
 
 def _poll_pending_videos() -> int:
-    """Check Shotstack jobs that are submitted but not yet complete."""
+    """Check Shotstack jobs that are submitted but not yet complete.
+    When a video is ready, send it to the grandparent via WhatsApp."""
     from sqlmodel import select
-    from .db import Story, open_session, update_story_fields
+    from .db import Story, Grandparent, open_session, update_story_fields
     from .video import get_video_url
+    from .whatsapp import send_media_message
 
     updated = 0
     with open_session() as session:
@@ -61,13 +63,28 @@ def _poll_pending_videos() -> int:
                 Story.video_url == "",
             )
         ).all()
-        job_ids = [(s.id, s.video_job_id) for s in pending]
+        rows = []
+        for s in pending:
+            gp = session.get(Grandparent, s.grandparent_id)
+            rows.append((s.id, s.video_job_id, s.prompt_index, gp.phone if gp else "", gp.language if gp else "english", gp.name if gp else ""))
 
-    for story_id, job_id in job_ids:
+    for story_id, job_id, prompt_index, phone, language, name in rows:
         url = get_video_url(job_id)
         if url:
             update_story_fields(story_id, video_url=url)
             updated += 1
             logger.info("Video ready for story %d: %s", story_id, url)
+            # Send to grandparent
+            if phone:
+                try:
+                    caption = {
+                        "hindi": f"🎬 आपकी कहानी का वीडियो कार्ड — हफ़्ता {prompt_index + 1}/52",
+                        "english": f"🎬 Your story card video is ready — Week {prompt_index + 1}/52",
+                        "punjabi": f"🎬 ਤੁਹਾਡੀ ਕਹਾਣੀ ਦਾ ਵੀਡੀਓ — ਹਫ਼ਤਾ {prompt_index + 1}/52",
+                    }.get(language, f"Week {prompt_index + 1}/52")
+                    send_media_message(phone, caption, url)
+                    logger.info("Video sent to %s for story %d", name, story_id)
+                except Exception:
+                    logger.exception("Failed to send video to %s", name)
 
     return updated
