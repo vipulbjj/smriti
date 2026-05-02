@@ -3,6 +3,7 @@ Admin CLI — manage families, grandparents, and generate books.
 
 Usage:
   python -m smriti.admin add-family
+  python -m smriti.admin onboard --grandparent-id 1
   python -m smriti.admin list
   python -m smriti.admin stories --family-id 1
   python -m smriti.admin send-prompt --grandparent-id 1
@@ -92,6 +93,51 @@ def cmd_send_prompt(grandparent_id: int):
         print(f"✓ Sent prompt {gp.prompt_index + 1}/52 to {gp.name}. SID: {sid}")
 
 
+def cmd_onboard(grandparent_id: int):
+    with open_session() as session:
+        gp = session.get(Grandparent, grandparent_id)
+        if not gp:
+            print(f"Grandparent {grandparent_id} not found")
+            return
+        family = session.get(Family, gp.family_id)
+        if not family:
+            print(f"Family not found for grandparent {grandparent_id}")
+            return
+
+    if gp.language == "hindi":
+        msg = (
+            f"🪔 नमस्ते {gp.name} जी,\n\n"
+            f"मैं *smriti* हूँ। अगले 52 हफ़्तों में हर सोमवार मैं आपसे आपकी "
+            f"ज़िंदगी के बारे में एक सवाल पूछूँगा।\n\n"
+            f"ये यादें एक ख़ूबसूरत किताब बनेंगी जो {family.grandchild_name} हमेशा "
+            f"के लिए संजो कर रखेंगे।\n\n"
+            f"जवाब लिखकर या आवाज़ में बोलकर दे सकते हैं — कोई जल्दी नहीं।\n\n"
+            f"आपका पहला सवाल सोमवार को आएगा। 🙏"
+        )
+    elif gp.language == "punjabi":
+        msg = (
+            f"🪔 ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {gp.name} ਜੀ,\n\n"
+            f"ਮੈਂ *smriti* ਹਾਂ। ਅਗਲੇ 52 ਹਫ਼ਤਿਆਂ ਵਿੱਚ ਹਰ ਸੋਮਵਾਰ ਮੈਂ ਤੁਹਾਡੇ ਤੋਂ "
+            f"ਤੁਹਾਡੀ ਜ਼ਿੰਦਗੀ ਬਾਰੇ ਇੱਕ ਸਵਾਲ ਪੁੱਛਾਂਗਾ।\n\n"
+            f"ਇਹ ਯਾਦਾਂ ਇੱਕ ਸੁੰਦਰ ਕਿਤਾਬ ਬਣਨਗੀਆਂ ਜੋ {family.grandchild_name} "
+            f"ਹਮੇਸ਼ਾ ਲਈ ਸੰਭਾਲਣਗੇ।\n\n"
+            f"ਤੁਹਾਡਾ ਪਹਿਲਾ ਸਵਾਲ ਸੋਮਵਾਰ ਨੂੰ ਆਵੇਗਾ। 🙏"
+        )
+    else:
+        msg = (
+            f"🪔 Namaste {gp.name},\n\n"
+            f"I am *smriti*. Over the next 52 weeks, every Monday I will ask you "
+            f"one question about your life and your memories.\n\n"
+            f"These stories will become a beautiful book that {family.grandchild_name} "
+            f"will treasure forever.\n\n"
+            f"You can reply by typing or by sending a voice note — take your time.\n\n"
+            f"Your first question arrives on Monday. 🙏"
+        )
+
+    sid = send_message(gp.phone, msg)
+    print(f"✓ Onboarding message sent to {gp.name} ({gp.phone}). SID: {sid}")
+
+
 def cmd_generate_book(family_id: int):
     path = generate_book(family_id)
     print(f"✓ Book generated: {path}")
@@ -120,6 +166,8 @@ def main():
         cmd_list()
     elif cmd == "add-family":
         cmd_add_family()
+    elif cmd == "onboard":
+        cmd_onboard(int(kwargs.get("grandparent_id", 0)))
     elif cmd == "stories":
         cmd_stories(int(kwargs.get("family_id", 0)))
     elif cmd == "send-prompt":

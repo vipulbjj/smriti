@@ -4,13 +4,14 @@ Produces a formatted PDF from a grandparent's 52 stories.
 """
 
 import html
-import os
+import logging
+import platform
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
@@ -22,14 +23,53 @@ from reportlab.platypus import (
     Spacer,
 )
 
+from .config import config
 from .db import Family, Grandparent, Story, get_family_stories, open_session
 from .prompts import PROMPTS_ENGLISH, PROMPTS_HINDI
 
-OUTPUT_DIR = Path("books")
+logger = logging.getLogger(__name__)
+
+
+def _register_unicode_font() -> str:
+    """
+    Register a TTF font with Devanagari/Gurmukhi support for ReportLab.
+    Returns the registered font name, or "Helvetica" if none found.
+    Arial Unicode MS (macOS) covers Devanagari. Noto Sans covers Linux.
+    """
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    candidates = []
+    if platform.system() == "Darwin":
+        candidates += ["/Library/Fonts/Arial Unicode.ttf"]
+    candidates += [
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+        str(Path(__file__).parent / "fonts" / "NotoSans-Regular.ttf"),
+    ]
+    for path in candidates:
+        if Path(path).exists():
+            try:
+                pdfmetrics.registerFont(TTFont("SmritiUnicode", path))
+                logger.info("PDF font: registered %s as SmritiUnicode", path)
+                return "SmritiUnicode"
+            except Exception as exc:
+                logger.warning("PDF font: could not register %s: %s", path, exc)
+
+    logger.warning(
+        "PDF font: no Unicode font found — Devanagari/Gurmukhi will not render. "
+        "Install Noto Sans or Arial Unicode MS."
+    )
+    return "Helvetica"
+
+
+_BODY_FONT = _register_unicode_font()
 
 
 def _styles():
     base = getSampleStyleSheet()
+    body = _BODY_FONT
+    body_bold = "Helvetica-Bold" if body == "Helvetica" else body
 
     title_style = ParagraphStyle(
         "SmritiTitle",
@@ -47,7 +87,7 @@ def _styles():
         textColor=colors.HexColor("#6B4226"),
         spaceAfter=4,
         alignment=TA_CENTER,
-        fontName="Helvetica",
+        fontName=body,
     )
     chapter_style = ParagraphStyle(
         "SmritiChapter",
@@ -56,7 +96,7 @@ def _styles():
         textColor=colors.HexColor("#2C1810"),
         spaceBefore=20,
         spaceAfter=8,
-        fontName="Helvetica-Bold",
+        fontName=body_bold,
     )
     prompt_style = ParagraphStyle(
         "SmritiPrompt",
@@ -64,7 +104,7 @@ def _styles():
         fontSize=11,
         textColor=colors.HexColor("#6B4226"),
         spaceAfter=10,
-        fontName="Helvetica-Oblique",
+        fontName=body,
         leftIndent=20,
         rightIndent=20,
     )
@@ -76,7 +116,7 @@ def _styles():
         spaceAfter=16,
         leading=18,
         alignment=TA_JUSTIFY,
-        fontName="Helvetica",
+        fontName=body,
     )
     week_label = ParagraphStyle(
         "SmritiWeek",
@@ -116,7 +156,8 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
     Generate a PDF memoir book for a family.
     Returns the path to the generated PDF.
     """
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    output_dir = Path(config.books_dir)
+    output_dir.mkdir(exist_ok=True)
 
     with open_session() as session:
         family = session.get(Family, family_id)
@@ -130,7 +171,7 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
     if output_path is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         filename = f"smriti-{family.grandchild_name.lower().replace(' ', '-')}-{timestamp}.pdf"
-        output_path = str(OUTPUT_DIR / filename)
+        output_path = str(output_dir / filename)
 
     doc = SimpleDocTemplate(
         output_path,
@@ -145,12 +186,9 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
     story_elements = []
 
     story_elements.append(Spacer(1, 4 * cm))
-    story_elements.append(Paragraph("🪔", styles["title"]))
-    story_elements.append(Spacer(1, 0.5 * cm))
     story_elements.append(Paragraph("smriti", styles["title"]))
     story_elements.append(Spacer(1, 0.5 * cm))
 
-    # Grandparent names
     names = " &amp; ".join(gp.name for gp, _ in pairs)
     story_elements.append(Paragraph(f"The Life and Stories of {names}", styles["subtitle"]))
     story_elements.append(Spacer(1, 1 * cm))
@@ -162,7 +200,6 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
     story_elements.append(Paragraph(str(year), styles["subtitle"]))
     story_elements.append(PageBreak())
 
-    # Foreword
     story_elements.append(Paragraph("A Note", styles["chapter"]))
     story_elements.append(
         Paragraph(
@@ -195,7 +232,7 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
                 Paragraph(f"Week {story.prompt_index + 1}", styles["week"])
             )
             story_elements.append(
-                Paragraph(f"<i>{story.prompt_text}</i>", styles["prompt"])
+                Paragraph(f"<i>{html.escape(story.prompt_text)}</i>", styles["prompt"])
             )
             story_elements.append(Spacer(1, 0.2 * cm))
 
@@ -207,13 +244,13 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
                 )
             story_elements.append(Spacer(1, 0.4 * cm))
 
-    # Back page
     story_elements.append(PageBreak())
     story_elements.append(Spacer(1, 8 * cm))
-    story_elements.append(Paragraph("🪔 smriti", styles["title"]))
+    story_elements.append(Paragraph("smriti", styles["title"]))
     story_elements.append(
         Paragraph("स्मृति — memory, that which is worth keeping.", styles["subtitle"])
     )
 
     doc.build(story_elements)
+    logger.info("Book generated: %s", output_path)
     return output_path

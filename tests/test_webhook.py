@@ -25,6 +25,7 @@ from sqlmodel import Session
 def use_test_db(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setattr(config, "database_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(config, "validate_twilio_signature", False)
     import smriti.db as db_module
     db_module._engine = None
     init_db()
@@ -34,7 +35,6 @@ def use_test_db(tmp_path, monkeypatch):
 
 @pytest.fixture
 def client():
-    # Import app after DB is patched
     from smriti.main import app
     return TestClient(app, raise_server_exceptions=True)
 
@@ -71,16 +71,15 @@ def test_text_reply_stored(mock_send, client, seeded_grandparent):
     )
     assert response.status_code == 200
 
-    # Story should be saved
     pairs = get_family_stories(family.id)
     _, stories = pairs[0]
     assert len(stories) == 1
     assert "अमृतसर" in stories[0].reply_text
 
-    # Acknowledgement sent
     mock_send.assert_called_once()
     ack_body = mock_send.call_args[0][1]
     assert "शुक्रिया" in ack_body
+    assert "Nanu" in ack_body
 
 
 @patch("smriti.webhook.send_message")
@@ -144,7 +143,6 @@ def test_prompt_index_advances_after_reply(mock_send, client, seeded_grandparent
 @patch("smriti.webhook.send_message")
 def test_inactive_grandparent_gets_completion_message(mock_send, client, seeded_grandparent):
     family, gp = seeded_grandparent
-    # Mark as inactive (all 52 done)
     with Session(get_engine()) as session:
         gp_db = session.get(Grandparent, gp.id)
         gp_db.active = False
@@ -161,3 +159,77 @@ def test_inactive_grandparent_gets_completion_message(mock_send, client, seeded_
         },
     )
     mock_send.assert_called_once()
+    msg = mock_send.call_args[0][1]
+    assert "52" in msg
+
+
+@patch("smriti.webhook.send_message")
+def test_duplicate_message_sid_ignored(mock_send, client, seeded_grandparent):
+    """Twilio retries must not create duplicate stories."""
+    family, gp = seeded_grandparent
+    payload = {
+        "From": "whatsapp:+919876543211",
+        "Body": "एक बार की बात है।",
+        "NumMedia": "0",
+        "MessageSid": "SM_TEST_DEDUP_001",
+    }
+
+    client.post("/webhook/whatsapp", data=payload)
+    client.post("/webhook/whatsapp", data=payload)  # duplicate retry
+
+    pairs = get_family_stories(family.id)
+    _, stories = pairs[0]
+    assert len(stories) == 1  # only one story despite two requests
+
+
+@patch("smriti.webhook.send_message")
+@patch("smriti.webhook.download_voice_note", side_effect=RuntimeError("network error"))
+def test_voice_note_error_sends_error_message(mock_download, mock_send, client, seeded_grandparent):
+    """If voice note download fails, send an error message and don't save a story."""
+    family, gp = seeded_grandparent
+    response = client.post(
+        "/webhook/whatsapp",
+        data={
+            "From": "whatsapp:+919876543211",
+            "Body": "",
+            "NumMedia": "1",
+            "MediaUrl0": "https://api.twilio.com/fake/media/bad",
+            "MediaContentType0": "audio/ogg",
+        },
+    )
+    assert response.status_code == 200
+
+    mock_send.assert_called_once()
+    error_body = mock_send.call_args[0][1]
+    assert "⚠️" in error_body  # error message sent, not ACK
+
+    pairs = get_family_stories(family.id)
+    _, stories = pairs[0]
+    assert len(stories) == 0  # no story saved
+
+
+@patch("smriti.webhook.send_message")
+def test_completion_notifies_grandchild(mock_send, client, seeded_grandparent):
+    """When the 52nd story is saved, the grandchild receives a notification."""
+    family, gp = seeded_grandparent
+    # Put grandparent at prompt 51 (last one)
+    with Session(get_engine()) as session:
+        gp_db = session.get(Grandparent, gp.id)
+        gp_db.prompt_index = 51
+        session.add(gp_db)
+        session.commit()
+
+    client.post(
+        "/webhook/whatsapp",
+        data={
+            "From": "whatsapp:+919876543211",
+            "Body": "आखिरी जवाब।",
+            "NumMedia": "0",
+        },
+    )
+
+    # Should have called send_message twice: ACK to grandparent + notification to grandchild
+    assert mock_send.call_count == 2
+    phones_called = {call[0][0] for call in mock_send.call_args_list}
+    assert "+919876543211" in phones_called   # grandparent ACK
+    assert "+919876543210" in phones_called   # grandchild notification

@@ -168,12 +168,12 @@ def format_whatsapp_prompt(index: int, language: Language, grandparent_name: str
 
     if language == Language.hindi:
         header = f"🪔 *smriti* — सप्ताह {week}/52\nनमस्ते {grandparent_name} जी,"
-        footer = "\n\n_(आप आवाज़ में या लिखकर जवाब दे सकते हैं।)_"
+        footer = "\n\n_आप आवाज़ में या लिखकर जवाब दे सकते हैं।_"
     elif language == Language.punjabi:
         header = f"🪔 *smriti* — ਹਫ਼ਤਾ {week}/52\nਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {grandparent_name} ਜੀ,"
-        footer = "\n\n_(ਤੁਸੀਂ ਬੋਲ ਕੇ ਜਾਂ ਲਿਖ ਕੇ ਜਵਾਬ ਦੇ ਸਕਦੇ ਹੋ।)_"
+        footer = "\n\n_ਤੁਸੀਂ ਬੋਲ ਕੇ ਜਾਂ ਲਿਖ ਕੇ ਜਵਾਬ ਦੇ ਸਕਦੇ ਹੋ।_"
     else:
         header = f"🪔 *smriti* — Week {week}/52\nNamaste {grandparent_name},"
-        footer = "\n\n_(You can reply by voice note or by typing your answer.)_"
+        footer = "\n\n_You can reply by voice note or by typing your answer._"
 
     return f"{header}\n\n{prompt}{footer}"

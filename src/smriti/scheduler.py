@@ -3,7 +3,7 @@ Weekly prompt scheduler.
 Every Monday at 9 AM IST, sends the next prompt to all active grandparents.
 """
 
-from datetime import datetime
+import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -12,6 +12,8 @@ from sqlmodel import select
 from .db import Grandparent, open_session
 from .prompts import format_whatsapp_prompt, Language
 from .whatsapp import send_message
+
+logger = logging.getLogger(__name__)
 
 
 def send_weekly_prompts() -> int:
@@ -31,10 +33,11 @@ def send_weekly_prompts() -> int:
                 )
                 send_message(to_phone=gp.phone, body=message)
                 sent += 1
-                print(f"[scheduler] Sent prompt {gp.prompt_index + 1}/52 to {gp.name} ({gp.phone})")
-            except Exception as exc:
-                print(f"[scheduler] Failed to send to {gp.name}: {exc}")
+                logger.info("Sent prompt %d/52 to %s (%s)", gp.prompt_index + 1, gp.name, gp.phone)
+            except Exception:
+                logger.exception("Failed to send prompt to %s", gp.name)
 
+    logger.info("Weekly prompts: sent %d", sent)
     return sent
 
 

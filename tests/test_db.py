@@ -13,6 +13,7 @@ from smriti.db import (
     init_db,
     get_engine,
     save_story,
+    story_exists_by_sid,
 )
 from smriti.config import config
 
@@ -86,6 +87,21 @@ def test_advance_prompt():
     updated = get_grandparent_by_phone("+919876543211")
     assert updated.prompt_index == 1
     assert updated.active is True
+
+
+def test_story_exists_by_sid():
+    family, gp = _seed_family()
+    story = Story(
+        grandparent_id=gp.id,
+        prompt_index=0,
+        prompt_text="Test question",
+        reply_text="Test answer",
+        twilio_message_sid="SM_TEST_123",
+    )
+    save_story(story)
+    assert story_exists_by_sid("SM_TEST_123") is True
+    assert story_exists_by_sid("SM_UNKNOWN") is False
+    assert story_exists_by_sid("") is False
 
 
 def test_advance_prompt_deactivates_at_52():

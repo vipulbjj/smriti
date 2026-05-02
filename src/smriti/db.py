@@ -47,10 +47,9 @@ class Story(SQLModel, table=True):
     grandparent_id: int = Field(foreign_key="grandparent.id")
     prompt_index: int
     prompt_text: str
-    # Raw reply from grandparent (text or transcription of voice note)
     reply_text: str = ""
-    # Original media URL if they sent a voice note
     voice_note_url: str = ""
+    twilio_message_sid: str = Field(default="", index=True)
     received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -105,6 +104,15 @@ def advance_prompt(grandparent_id: int) -> None:
                 gp.active = False
             session.add(gp)
             session.commit()
+
+
+def story_exists_by_sid(message_sid: str) -> bool:
+    if not message_sid:
+        return False
+    with open_session() as session:
+        return session.exec(
+            select(Story).where(Story.twilio_message_sid == message_sid)
+        ).first() is not None
 
 
 def get_family_stories(family_id: int) -> list[tuple[Grandparent, list[Story]]]:

@@ -42,6 +42,7 @@ def test_format_whatsapp_prompt_hindi():
     assert "Nanu" in msg
     assert "1/52" in msg
     assert "आवाज़" in msg  # footer hint
+    assert "_(" not in msg  # WhatsApp italic is _text_ not _(text)_
 
 
 def test_format_whatsapp_prompt_english():
@@ -50,6 +51,7 @@ def test_format_whatsapp_prompt_english():
     assert "Grandpa" in msg
     assert "Week 1/52" in msg
     assert "voice note" in msg
+    assert "_(" not in msg
 
 
 def test_format_whatsapp_prompt_week_numbering():

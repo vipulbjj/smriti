@@ -1,6 +1,6 @@
 [project]
 name = "smriti"
-version = "0.1.0"
+version = "0.2.0"
 description = "WhatsApp-native memory preservation for Indian families"
 requires-python = ">=3.11"
 dependencies = [
