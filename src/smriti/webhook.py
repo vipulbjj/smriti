@@ -77,6 +77,7 @@ async def _check_twilio_signature(request: Request) -> None:
     "/webhook/whatsapp",
     response_class=PlainTextResponse,
     dependencies=[Depends(_check_twilio_signature)],
+    responses={403: {"description": "Invalid Twilio signature"}},
 )
 async def whatsapp_webhook(
     From: str = Form(...),

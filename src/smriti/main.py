@@ -1,11 +1,14 @@
 """FastAPI app — entry point."""
 
 import logging
+import os
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import Response
 
 from .config import config
+from .cron import router as cron_router
 from .db import init_db
 from .scheduler import start as start_scheduler
 from .webhook import router as webhook_router
@@ -17,29 +20,45 @@ logging.basicConfig(
 )
 
 _scheduler = None
+_IS_VERCEL = bool(os.environ.get("VERCEL"))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _scheduler
     init_db()
-    _scheduler = start_scheduler()
+    if not _IS_VERCEL:
+        _scheduler = start_scheduler()
     yield
-    _scheduler.shutdown()
+    if _scheduler:
+        _scheduler.shutdown()
 
 
 app = FastAPI(title="smriti", version="0.2.0", lifespan=lifespan)
 app.include_router(webhook_router)
+app.include_router(cron_router)
 
 
 @app.get("/health")
 def health():
+    if _IS_VERCEL:
+        scheduler_status = "vercel-cron"
+    elif _scheduler and _scheduler.running:
+        scheduler_status = "running"
+    else:
+        scheduler_status = "stopped"
+
     return {
         "status": "ok",
         "service": "smriti",
         "version": "0.2.0",
-        "scheduler": "running" if _scheduler and _scheduler.running else "stopped",
+        "scheduler": scheduler_status,
     }
+
+
+@app.head("/health", include_in_schema=False)
+def health_head():
+    return Response(status_code=200)
 
 
 if __name__ == "__main__":

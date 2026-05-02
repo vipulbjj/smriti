@@ -18,6 +18,7 @@ class Config:
     # Set to False in tests; True in production
     validate_twilio_signature: bool = os.environ.get("VALIDATE_TWILIO_SIGNATURE", "true").lower() == "true"
     books_dir: str = os.environ.get("BOOKS_DIR", "books")
+    cron_secret: str = os.environ.get("CRON_SECRET", "")
 
 
 config = Config()
