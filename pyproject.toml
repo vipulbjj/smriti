@@ -1,6 +1,6 @@
 [project]
 name = "smriti"
-version = "0.2.0"
+version = "0.3.0"
 description = "WhatsApp-native memory preservation for Indian families"
 requires-python = ">=3.11"
 dependencies = [
@@ -15,6 +15,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "python-multipart>=0.0.9",
     "Pillow>=10.0.0",
+    "groq>=0.9.0",
+    "gTTS>=2.5.0",
 ]
 
 [project.optional-dependencies]

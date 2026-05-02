@@ -1,21 +1,20 @@
 """
 WhatsApp webhook — receives incoming messages from Twilio.
 
-Twilio sends a POST to /webhook/whatsapp for every inbound message.
-We:
-  1. Validate the Twilio signature.
-  2. Deduplicate via MessageSid (guards against Twilio retries).
-  3. Identify the grandparent by phone number.
-  4. If they sent a voice note, download + transcribe it.
-  5. Store the story.
-  6. Advance their prompt index.
-  7. Reply with an acknowledgement.
-  8. Notify the grandchild when all 52 stories are complete.
+Flow per message:
+  1. Validate Twilio signature
+  2. Deduplicate via MessageSid
+  3. Identify grandparent by phone
+  4. Handle media: voice note → transcribe, photo → store URL
+  5. Save story, advance prompt index
+  6. Fire AI enhancement + video generation in background
+  7. ACK grandparent, optionally notify grandchild on completion
 """
 
 import logging
+from threading import Thread
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from twilio.request_validator import RequestValidator
 
@@ -29,6 +28,7 @@ from .db import (
     open_session,
     save_story,
     story_exists_by_sid,
+    update_story_fields,
 )
 from .prompts import get_prompt
 from .transcribe import transcribe
@@ -56,10 +56,16 @@ _VOICE_ERROR = {
 }
 
 _GRANDCHILD_NOTIFICATION = (
-    "🎉 {grandparent_name} has completed all 52 stories on smriti! "
-    "Their memories are ready to become a book. "
-    "Run: python -m smriti.admin generate-book --family-id {family_id}"
+    "🎉 {grandparent_name} has completed all 52 stories on smriti!\n\n"
+    "View their memory timeline: {base_url}/family/{token}\n\n"
+    "Their book is ready to generate."
 )
+
+_DIGEST_NOTE = {
+    "hindi": "📖 इस हफ़्ते {name} जी ने एक यादगार बात साझा की:\n\n{digest}",
+    "english": "📖 This week {name} shared a memory:\n\n{digest}",
+    "punjabi": "📖 ਇਸ ਹਫ਼ਤੇ {name} ਜੀ ਨੇ ਇੱਕ ਯਾਦ ਸਾਂਝੀ ਕੀਤੀ:\n\n{digest}",
+}
 
 
 async def _check_twilio_signature(request: Request) -> None:
@@ -73,6 +79,38 @@ async def _check_twilio_signature(request: Request) -> None:
         raise HTTPException(status_code=403)
 
 
+def _run_ai_pipeline(story_id: int, prompt_text: str, reply_text: str,
+                     grandparent_name: str, language: str, week: int) -> None:
+    """Background: enhance story text + submit Shotstack video job."""
+    # 1. Story enhancement
+    try:
+        from .ai import enhance_story
+        enhanced = enhance_story(prompt_text, reply_text, grandparent_name, language)
+        if enhanced:
+            update_story_fields(story_id, enhanced_text=enhanced)
+            logger.info("Enhanced story %d", story_id)
+    except Exception:
+        logger.exception("AI enhancement failed for story %d", story_id)
+
+    # 2. Video generation (if Shotstack configured)
+    try:
+        from .video import submit_story_video
+        text_for_video = enhanced if enhanced else reply_text  # type: ignore[possibly-undefined]
+        audio_url = f"{config.webhook_base_url}/media/audio/{story_id}"
+        job_id = submit_story_video(
+            story_id=story_id,
+            story_text=text_for_video,
+            grandparent_name=grandparent_name,
+            week_number=week,
+            language=language,
+            audio_url=audio_url if config.shotstack_api_key else None,
+        )
+        if job_id:
+            update_story_fields(story_id, video_job_id=job_id)
+    except Exception:
+        logger.exception("Video pipeline failed for story %d", story_id)
+
+
 @router.post(
     "/webhook/whatsapp",
     response_class=PlainTextResponse,
@@ -80,6 +118,7 @@ async def _check_twilio_signature(request: Request) -> None:
     responses={403: {"description": "Invalid Twilio signature"}},
 )
 async def whatsapp_webhook(
+    background_tasks: BackgroundTasks,
     From: str = Form(...),
     Body: str = Form(default=""),
     NumMedia: str = Form(default="0"),
@@ -106,16 +145,25 @@ async def whatsapp_webhook(
 
         reply_text = Body.strip()
         voice_note_url = ""
+        photo_url = ""
+        num_media = int(NumMedia)
 
-        if int(NumMedia) > 0 and "audio" in MediaContentType0:
-            voice_note_url = MediaUrl0
-            try:
-                audio_bytes = download_voice_note(MediaUrl0)
-                reply_text = transcribe(audio_bytes, language=gp.language)
-            except Exception:
-                logger.exception("Voice note processing failed for %s", phone)
-                send_message(phone, _VOICE_ERROR.get(gp.language, _VOICE_ERROR["english"]))
-                return ""
+        if num_media > 0:
+            content_type = MediaContentType0.lower()
+            if "audio" in content_type:
+                voice_note_url = MediaUrl0
+                try:
+                    audio_bytes = download_voice_note(MediaUrl0)
+                    reply_text = transcribe(audio_bytes, language=gp.language)
+                except Exception:
+                    logger.exception("Voice note processing failed for %s", phone)
+                    send_message(phone, _VOICE_ERROR.get(gp.language, _VOICE_ERROR["english"]))
+                    return ""
+            elif "image" in content_type:
+                photo_url = MediaUrl0
+                # Use body text as reply if provided alongside the photo
+                if not reply_text:
+                    reply_text = "📷"  # placeholder so the story is saved
 
         if not reply_text:
             return ""
@@ -127,17 +175,29 @@ async def whatsapp_webhook(
             prompt_text=prompt_text,
             reply_text=reply_text,
             voice_note_url=voice_note_url,
+            photo_url=photo_url,
             twilio_message_sid=MessageSid,
         )
-        save_story(story)
+        saved = save_story(story)
         advance_prompt(gp.id)
+
+        # Fire AI pipeline in background (non-blocking)
+        background_tasks.add_task(
+            _run_ai_pipeline,
+            story_id=saved.id,
+            prompt_text=prompt_text,
+            reply_text=reply_text,
+            grandparent_name=gp.name,
+            language=gp.language,
+            week=gp.prompt_index + 1,
+        )
 
         send_message(
             phone,
             _ACK.get(gp.language, _ACK["english"]).format(name=gp.name),
         )
 
-        # Notify the grandchild when all 52 stories are done
+        # On completion: notify grandchild with timeline link
         updated_gp = get_grandparent_by_phone(phone)
         if updated_gp and not updated_gp.active:
             with open_session() as session:
@@ -148,18 +208,56 @@ async def whatsapp_webhook(
                         family.grandchild_phone,
                         _GRANDCHILD_NOTIFICATION.format(
                             grandparent_name=gp.name,
-                            family_id=family.id,
+                            base_url=config.webhook_base_url,
+                            token=family.timeline_token,
                         ),
                     )
-                    logger.info(
-                        "Notified grandchild %s: %s completed all stories",
-                        family.grandchild_phone,
-                        gp.name,
-                    )
+                    logger.info("Notified grandchild %s — %s completed all stories",
+                                family.grandchild_phone, gp.name)
                 except Exception:
                     logger.exception("Failed to notify grandchild for family %s", family.id)
+        else:
+            # Send weekly digest to grandchild
+            _send_digest_background(background_tasks, saved.id, gp, prompt_text, reply_text)
 
         return ""
     except Exception:
         logger.exception("Unhandled webhook error for From=%s", From)
         return ""
+
+
+def _send_digest_background(background_tasks: BackgroundTasks, story_id: int,
+                             gp, prompt_text: str, reply_text: str) -> None:
+    """Send a short AI digest of the story to the grandchild (best-effort)."""
+    background_tasks.add_task(
+        _do_send_digest,
+        story_id=story_id,
+        grandparent_id=gp.id,
+        family_id=gp.family_id,
+        grandparent_name=gp.name,
+        language=gp.language,
+        prompt_text=prompt_text,
+        reply_text=reply_text,
+    )
+
+
+def _do_send_digest(story_id: int, grandparent_id: int, family_id: int,
+                    grandparent_name: str, language: str,
+                    prompt_text: str, reply_text: str) -> None:
+    try:
+        from .ai import generate_digest
+        with open_session() as session:
+            from .db import Family as FamilyModel
+            family = session.get(FamilyModel, family_id)
+        if not family or not family.grandchild_phone:
+            return
+        digest = generate_digest(prompt_text, reply_text, grandparent_name, family.grandchild_name)
+        if not digest:
+            return
+        msg = _DIGEST_NOTE.get(language, _DIGEST_NOTE["english"]).format(
+            name=grandparent_name, digest=digest
+        )
+        send_message(family.grandchild_phone, msg)
+        logger.info("Digest sent to grandchild for story %d", story_id)
+    except Exception:
+        logger.exception("Digest send failed for story %d", story_id)

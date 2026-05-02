@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
@@ -22,24 +23,26 @@ class SubscriptionTier(str, Enum):
 class Family(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     grandchild_name: str
-    grandchild_phone: str          # WhatsApp number, e.g. +919876543210
+    grandchild_phone: str
     grandchild_email: str = ""
     tier: SubscriptionTier = SubscriptionTier.whatsapp
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     notes: str = ""
+    # Shareable token for the family memory timeline
+    timeline_token: str = Field(default_factory=lambda: secrets.token_urlsafe(16))
 
 
 class Grandparent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     family_id: int = Field(foreign_key="family.id")
     name: str
-    phone: str                     # WhatsApp number they reply from
+    phone: str
     language: Language = Language.hindi
-    # Which prompt index they're on (0-indexed, 0–51)
     prompt_index: int = 0
-    # Whether they're actively receiving prompts
     active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Set each time a weekly prompt is sent — used for 3-day reminder logic
+    last_prompted_at: Optional[datetime] = Field(default=None)
 
 
 class Story(SQLModel, table=True):
@@ -48,7 +51,12 @@ class Story(SQLModel, table=True):
     prompt_index: int
     prompt_text: str
     reply_text: str = ""
+    enhanced_text: str = ""        # AI-polished prose version of reply_text
     voice_note_url: str = ""
+    photo_url: str = ""            # WhatsApp photo attachment URL
+    audio_url: str = ""            # TTS-generated audio URL
+    video_job_id: str = ""         # Shotstack render job ID
+    video_url: str = ""            # Final video URL when render completes
     twilio_message_sid: str = Field(default="", index=True)
     received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -59,11 +67,12 @@ _engine = None
 def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_engine(
-            config.database_url,
-            echo=False,
-            connect_args={"check_same_thread": False},
+        connect_args = (
+            {"check_same_thread": False}
+            if config.database_url.startswith("sqlite")
+            else {}
         )
+        _engine = create_engine(config.database_url, echo=False, connect_args=connect_args)
     return _engine
 
 
@@ -113,6 +122,59 @@ def story_exists_by_sid(message_sid: str) -> bool:
         return session.exec(
             select(Story).where(Story.twilio_message_sid == message_sid)
         ).first() is not None
+
+
+def update_story_fields(story_id: int, **fields) -> None:
+    """Patch arbitrary fields on a Story row."""
+    with open_session() as session:
+        story = session.get(Story, story_id)
+        if story:
+            for k, v in fields.items():
+                setattr(story, k, v)
+            session.add(story)
+            session.commit()
+
+
+def mark_prompted(grandparent_id: int) -> None:
+    """Record that a prompt was just sent so we can track 3-day reminder window."""
+    with open_session() as session:
+        gp = session.get(Grandparent, grandparent_id)
+        if gp:
+            gp.last_prompted_at = datetime.now(timezone.utc)
+            session.add(gp)
+            session.commit()
+
+
+def get_grandparents_needing_reminder(days: int = 3) -> list[Grandparent]:
+    """Return active grandparents prompted >N days ago who haven't replied yet."""
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    with open_session() as session:
+        candidates = session.exec(
+            select(Grandparent).where(
+                Grandparent.active == True,
+                Grandparent.last_prompted_at != None,
+                Grandparent.last_prompted_at < cutoff,
+            )
+        ).all()
+        result = []
+        for gp in candidates:
+            has_replied = session.exec(
+                select(Story).where(
+                    Story.grandparent_id == gp.id,
+                    Story.prompt_index == gp.prompt_index,
+                )
+            ).first() is not None
+            if not has_replied:
+                result.append(gp)
+        return result
+
+
+def get_family_by_token(token: str) -> Optional["Family"]:
+    with open_session() as session:
+        return session.exec(
+            select(Family).where(Family.timeline_token == token)
+        ).first()
 
 
 def get_family_stories(family_id: int) -> list[tuple[Grandparent, list[Story]]]:

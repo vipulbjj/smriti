@@ -12,6 +12,8 @@ from .cron import router as cron_router
 from .db import init_db
 from .landing import router as landing_router
 from .scheduler import start as start_scheduler
+from .timeline import router as timeline_router
+from .tts import router as tts_router
 from .webhook import router as webhook_router
 
 logging.basicConfig(
@@ -39,6 +41,8 @@ app = FastAPI(title="smriti", version="0.2.0", lifespan=lifespan)
 app.include_router(landing_router)
 app.include_router(webhook_router)
 app.include_router(cron_router)
+app.include_router(timeline_router)
+app.include_router(tts_router)
 
 
 @app.get("/health")

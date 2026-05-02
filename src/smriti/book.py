@@ -30,11 +30,32 @@ from .prompts import PROMPTS_ENGLISH, PROMPTS_HINDI
 logger = logging.getLogger(__name__)
 
 
+def _download_noto_font() -> Optional[str]:
+    """Download Noto Sans to /tmp if not already cached. Returns path or None."""
+    import urllib.request
+    font_dir = Path("/tmp/smriti_fonts")
+    font_dir.mkdir(exist_ok=True)
+    font_path = font_dir / "NotoSans-Regular.ttf"
+    if font_path.exists():
+        return str(font_path)
+    url = (
+        "https://github.com/notofonts/noto-fonts/raw/main/"
+        "hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+    )
+    try:
+        urllib.request.urlretrieve(url, font_path)
+        logger.info("PDF font: downloaded Noto Sans to %s", font_path)
+        return str(font_path)
+    except Exception as exc:
+        logger.warning("PDF font: could not download Noto Sans: %s", exc)
+        return None
+
+
 def _register_unicode_font() -> str:
     """
-    Register a TTF font with Devanagari/Gurmukhi support for ReportLab.
-    Returns the registered font name, or "Helvetica" if none found.
-    Arial Unicode MS (macOS) covers Devanagari. Noto Sans covers Linux.
+    Register a TTF font with Devanagari support for ReportLab.
+    Tries local system fonts first, then downloads Noto Sans to /tmp.
+    Returns the registered font name.
     """
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
@@ -47,19 +68,21 @@ def _register_unicode_font() -> str:
         "/usr/share/fonts/noto/NotoSans-Regular.ttf",
         str(Path(__file__).parent / "fonts" / "NotoSans-Regular.ttf"),
     ]
+    # On Vercel / cloud Linux: download to /tmp
+    downloaded = _download_noto_font()
+    if downloaded:
+        candidates.append(downloaded)
+
     for path in candidates:
         if Path(path).exists():
             try:
                 pdfmetrics.registerFont(TTFont("SmritiUnicode", path))
-                logger.info("PDF font: registered %s as SmritiUnicode", path)
+                logger.info("PDF font: registered %s", path)
                 return "SmritiUnicode"
             except Exception as exc:
                 logger.warning("PDF font: could not register %s: %s", path, exc)
 
-    logger.warning(
-        "PDF font: no Unicode font found — Devanagari/Gurmukhi will not render. "
-        "Install Noto Sans or Arial Unicode MS."
-    )
+    logger.warning("PDF font: no Unicode font found — Devanagari will not render.")
     return "Helvetica"
 
 
@@ -236,8 +259,9 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
             )
             story_elements.append(Spacer(1, 0.2 * cm))
 
-            if story.reply_text:
-                story_elements.append(Paragraph(html.escape(story.reply_text), styles["story"]))
+            body_text = story.enhanced_text or story.reply_text
+            if body_text:
+                story_elements.append(Paragraph(html.escape(body_text), styles["story"]))
             else:
                 story_elements.append(
                     Paragraph("<i>(No response recorded)</i>", styles["prompt"])
