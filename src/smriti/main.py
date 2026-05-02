@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
         _scheduler.shutdown()
 
 
-app = FastAPI(title="smriti", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="smriti", version="0.3.0", lifespan=lifespan)
 app.include_router(landing_router)
 app.include_router(webhook_router)
 app.include_router(cron_router)
@@ -57,7 +57,7 @@ def health():
     return {
         "status": "ok",
         "service": "smriti",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "scheduler": scheduler_status,
     }
 
