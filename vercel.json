@@ -22,7 +22,7 @@
     },
     {
       "path": "/cron/poll-videos",
-      "schedule": "0 * * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }
