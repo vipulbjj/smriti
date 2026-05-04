@@ -113,6 +113,14 @@ _PAGE = """<!DOCTYPE html>
     max-width: 480px;
     line-height: 1.65;
   }
+  .tagline {
+    font-family: 'Lora', serif;
+    font-size: 1.15rem;
+    font-style: italic;
+    color: var(--gold);
+    letter-spacing: .01em;
+    margin-top: -.5rem;
+  }
   .cta {
     display: inline-flex;
     align-items: center;
@@ -255,6 +263,8 @@ _PAGE = """<!DOCTYPE html>
   </div>
 
   <h1>Your family's stories,<br><em>preserved forever.</em></h1>
+
+  <p class="tagline">Some memories deserve to outlive us.</p>
 
   <p class="sub">Every Monday, smriti sends your grandparent one gentle question on WhatsApp. Their answers become a book your family will keep for generations.</p>
 
