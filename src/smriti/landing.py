@@ -9,7 +9,7 @@ _PAGE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>smriti — preserve their stories</title>
-<meta name="description" content="One WhatsApp question a week. Your grandparent's voice. A memoir you'll treasure forever.">
+<meta name="description" content="Seven questions. Seven days. A lifetime of stories preserved — in your grandparent's own voice, on WhatsApp.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2312080E'/><text x='16' y='24' font-size='20' font-weight='bold' text-anchor='middle' fill='%23C4933F' font-family='Georgia,serif'>&#x938;</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
@@ -495,7 +495,7 @@ footer a:hover{color:rgba(245,239,227,.5)}
     <h1 class="hero-h1 reveal d1">
       The stories only<br><em>they</em> can tell.
     </h1>
-    <p class="hero-sub reveal d2">One gentle WhatsApp question a week. Your grandparent replies in their own voice. Their stories become a memoir — yours to keep forever.</p>
+    <p class="hero-sub reveal d2">Seven questions. Seven days. Your grandparent replies by voice on WhatsApp — in their language, at their pace. A lifetime of stories, captured in a week.</p>
     <div class="hero-actions reveal d3">
       <a class="btn-primary" id="cta-main" href="mailto:vbajaj56@gmail.com?subject=smriti%20%E2%80%94%20get%20started">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.83L0 24l6.364-1.499A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
@@ -557,9 +557,9 @@ footer a:hover{color:rgba(245,239,227,.5)}
   <div class="split-body">
     <p class="eyebrow reveal-left" style="color:var(--gold-dk)">The gift that lasts</p>
     <h2 class="split-h reveal-left d1">
-      A question a week.<br><em>A lifetime preserved.</em>
+      Seven questions.<br><em>A lifetime preserved.</em>
     </h2>
-    <p class="reveal-left d2">They won't be here forever. Neither will their stories — unless someone asks. smriti does the asking, every week, in their own language, through WhatsApp they already know.</p>
+    <p class="reveal-left d2">They won't be here forever. Neither will their stories — unless someone asks. smriti does the asking, one morning at a time, in their own language, through WhatsApp they already know.</p>
     <p class="split-detail reveal-left d3">No app to install &middot; No new passwords &middot; Just WhatsApp</p>
   </div>
   <div class="split-img">
@@ -587,30 +587,30 @@ footer a:hover{color:rgba(245,239,227,.5)}
   <div class="how-inner">
     <div class="section-head reveal">
       <p class="eyebrow" style="color:var(--gold-dk);justify-content:center;display:flex"><span style="display:flex;align-items:center;gap:.6rem"><span style="display:inline-block;width:18px;height:1px;background:var(--gold-dk);opacity:.6"></span>How it works</span></p>
-      <h2 class="section-h" style="color:var(--ink)">So simple your dadi<br>can use it alone.</h2>
-      <p class="section-p">They never download anything. You never chase them. It just works — every Monday morning, on WhatsApp.</p>
+      <h2 class="section-h" style="color:var(--ink)">Seven days.<br>A lifetime preserved.</h2>
+      <p class="section-p">They never download anything. You never chase them. One question arrives each morning — they reply whenever they're ready.</p>
     </div>
     <div class="how-grid">
       <div class="steps">
         <div class="step reveal d1">
           <div class="step-n">1</div>
           <div class="step-body">
-            <h3>You gift it to them</h3>
-            <p>Two minutes to sign up. We need their name, WhatsApp number, and the language they're most comfortable in. That's all — from you, forever.</p>
+            <h3>You start the sprint</h3>
+            <p>Tell us their name, WhatsApp number, and language. Choose a theme — childhood, career, love story. We handle everything else. Takes two minutes.</p>
           </div>
         </div>
         <div class="step reveal d2">
           <div class="step-n">2</div>
           <div class="step-body">
-            <h3>One question, every week</h3>
-            <p>smriti sends a warm, thoughtful prompt — "What did you cook for your wedding?" — in their language, on WhatsApp. They reply by voice note or a few words. That's it.</p>
+            <h3>7 questions over 7 days</h3>
+            <p>One warm, curated question arrives each morning on WhatsApp — "What did you cook for your wedding?" They reply by voice note whenever they're ready. No pressure.</p>
           </div>
         </div>
         <div class="step reveal d3">
           <div class="step-n">3</div>
           <div class="step-body">
-            <h3>A memoir takes shape</h3>
-            <p>Every reply is saved and AI-polished into beautiful prose. After a year, we print it into a hardbound memoir book — delivered to your door.</p>
+            <h3>A chapter is born</h3>
+            <p>Every reply is AI-polished into beautiful prose. Seven days later, a richly designed memoir chapter — digital or hardbound — is ready to keep forever. Do as many sprints as you want.</p>
           </div>
         </div>
       </div>
@@ -622,14 +622,14 @@ footer a:hover{color:rgba(245,239,227,.5)}
               <div class="wa-av">स</div>
               <div class="wa-meta">
                 <div class="wn">smriti</div>
-                <div class="ws">usually replies instantly</div>
+                <div class="ws">Day 3 of 7 · Childhood</div>
               </div>
             </div>
             <div class="msgs">
               <div class="bbl msg-in">
                 नमस्ते दादीजी 🙏<br><br>
                 आज का सवाल: बचपन में आपकी सबसे पसंदीदा दिवाली की याद क्या है?
-                <span class="t">Mon 10:00 ✓✓</span>
+                <span class="t">9:00 ✓✓</span>
               </div>
               <div class="bbl msg-out">
                 <div class="vn">
@@ -646,13 +646,13 @@ footer a:hover{color:rgba(245,239,227,.5)}
                   </div>
                   <span class="vn-dur">2:07</span>
                 </div>
-                <span class="t">10:41</span>
+                <span class="t">11:24</span>
               </div>
               <div class="bbl msg-in">
                 क्या खूब यादें, दादीजी! ✨<br>
                 आपकी कहानी सुरक्षित हो गई।<br>
-                अगला सवाल अगले सोमवार को।
-                <span class="t">10:41 ✓✓</span>
+                कल का सवाल सुबह 9 बजे आएगा।
+                <span class="t">11:24 ✓✓</span>
               </div>
             </div>
             <div class="wa-inp">
@@ -677,8 +677,8 @@ footer a:hover{color:rgba(245,239,227,.5)}
     <h2 class="split-h reveal-right d1" style="color:var(--ivory)">
       From voice notes<br>to <em>hardbound memoir.</em>
     </h2>
-    <p class="reveal-right d2" style="color:rgba(245,239,227,.55)">Every story your grandparent tells is woven into a beautifully designed memoir book — printed, bound, and delivered to your family. A physical heirloom that outlives all of us.</p>
-    <p class="split-detail reveal-right d3">Also includes a private digital timeline &middot; Audio recordings preserved</p>
+    <p class="reveal-right d2" style="color:rgba(245,239,227,.55)">Seven days of voice notes, woven by AI into beautifully designed prose — then printed into a hardbound memoir chapter. Start with childhood. Add career. Add a love story. Each sprint becomes its own chapter.</p>
+    <p class="split-detail reveal-right d3">Digital PDF ready in 7 days &middot; Hardbound book optional &middot; Audio recordings preserved</p>
   </div>
 </div>
 
