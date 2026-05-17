@@ -26,7 +26,7 @@
     },
     {
       "path": "/cron/process-pending",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 4 * * *"
     }
   ]
 }
