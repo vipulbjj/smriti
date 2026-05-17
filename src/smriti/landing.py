@@ -9,28 +9,47 @@ _PAGE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>smriti — preserve your memories</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23D97706'/><text x='16' y='24' font-size='20' font-weight='bold' text-anchor='middle' fill='white' font-family='Georgia,serif'>&#x938;</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23D97706'/><text x='16' y='24' font-size='20' font-weight='bold' text-anchor='middle' fill='white' font-family='Georgia,serif'>&#x938;</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --cream:     #FBF5EC;
-    --ink:       #1C1917;
-    --muted:     #78716C;
-    --gold:      #B45309;
-    --gold-light:#FEF3C7;
-    --wa:        #22C55E;
-    --wa-dark:   #16A34A;
-    --border:    #E7DDD0;
-    --white:     #fff;
+    /* Surfaces */
+    --page:         #FDFBF7;
+    --surface:      #FFFFFF;
+
+    /* Typography */
+    --ink:          #1B1108;
+    --muted:        #6B5F54;
+    --faint:        #9E8E82;
+
+    /* Brand — marigold saffron */
+    --saffron:      #D97706;
+    --saffron-dk:   #B45309;
+    --saffron-bg:   #FEF6E4;
+    --saffron-glow: rgba(217,119,6,.18);
+
+    /* Layout */
+    --border:       #E8DDD0;
+
+    /* WhatsApp */
+    --wa:           #25D366;
+    --wa-dark:      #128C7E;
+
+    /* Shadows */
+    --sh-sm:  0 1px 6px rgba(90,50,10,.07);
+    --sh-md:  0 4px 24px rgba(90,50,10,.10);
+    --sh-lg:  0 12px 48px rgba(90,50,10,.13);
   }
 
   html { scroll-behavior: smooth; }
 
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    background: var(--cream);
+    background: var(--page);
     color: var(--ink);
     min-height: 100vh;
     display: flex;
@@ -42,8 +61,13 @@ _PAGE = """<!DOCTYPE html>
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem 2rem;
+    padding: 1.25rem 2.5rem;
     border-bottom: 1px solid var(--border);
+    background: rgba(253,251,247,.85);
+    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
   .logo {
     font-family: 'Lora', serif;
@@ -53,11 +77,11 @@ _PAGE = """<!DOCTYPE html>
     color: var(--ink);
     text-decoration: none;
   }
-  .logo span { color: var(--gold); }
+  .logo span { color: var(--saffron); }
   .nav-tag {
     font-size: .75rem;
-    color: var(--muted);
-    letter-spacing: .04em;
+    color: var(--faint);
+    letter-spacing: .05em;
     text-transform: uppercase;
   }
 
@@ -69,17 +93,23 @@ _PAGE = """<!DOCTYPE html>
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 5.5rem 1.5rem 4.5rem;
-    gap: 1.4rem;
+    padding: 6rem 1.5rem 5rem;
+    gap: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(217,119,6,.10) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 50% at 100% 100%, rgba(234,119,20,.07) 0%, transparent 60%),
+      var(--page);
   }
   .devanagari {
     font-family: 'Lora', 'Noto Serif Devanagari', serif;
-    font-size: clamp(4rem, 14vw, 8rem);
+    font-size: clamp(5rem, 18vw, 11rem);
     line-height: 1;
-    color: var(--gold);
-    opacity: .13;
+    color: var(--saffron);
+    opacity: .07;
     position: absolute;
-    top: 4.5rem;
+    top: 3.5rem;
     left: 50%;
     transform: translateX(-50%);
     pointer-events: none;
@@ -89,38 +119,40 @@ _PAGE = """<!DOCTYPE html>
   .badge {
     display: inline-flex;
     align-items: center;
-    gap: .4rem;
-    background: var(--gold-light);
-    color: var(--gold);
+    gap: .45rem;
+    background: var(--saffron-bg);
+    color: var(--saffron-dk);
+    border: 1px solid rgba(217,119,6,.22);
     font-size: .78rem;
-    font-weight: 500;
-    padding: .3rem .85rem;
+    font-weight: 600;
+    padding: .35rem 1rem;
     border-radius: 999px;
-    letter-spacing: .02em;
+    letter-spacing: .03em;
+    box-shadow: var(--sh-sm);
   }
-  .badge svg { width: 14px; height: 14px; }
+  .badge svg { width: 14px; height: 14px; flex-shrink: 0; }
   h1 {
     font-family: 'Lora', serif;
-    font-size: clamp(2.4rem, 6vw, 3.75rem);
-    line-height: 1.15;
-    max-width: 640px;
+    font-size: clamp(2.6rem, 6vw, 4rem);
+    line-height: 1.12;
+    max-width: 660px;
     font-weight: 600;
-    letter-spacing: -.02em;
+    letter-spacing: -.025em;
   }
-  h1 em { font-style: italic; color: var(--gold); }
+  h1 em { font-style: italic; color: var(--saffron); }
   .tagline {
     font-family: 'Lora', serif;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-style: italic;
     color: var(--muted);
     letter-spacing: .01em;
-    margin-top: -.25rem;
+    margin-top: -.3rem;
   }
   .sub {
     font-size: 1.05rem;
     color: var(--muted);
     max-width: 500px;
-    line-height: 1.7;
+    line-height: 1.75;
   }
   .cta-row {
     display: flex;
@@ -128,82 +160,96 @@ _PAGE = """<!DOCTYPE html>
     gap: 1rem;
     flex-wrap: wrap;
     justify-content: center;
-    margin-top: .25rem;
+    margin-top: .35rem;
   }
   .cta {
     display: inline-flex;
     align-items: center;
-    gap: .55rem;
+    gap: .6rem;
     background: var(--wa);
     color: #fff;
-    font-weight: 500;
+    font-weight: 600;
     font-size: .95rem;
-    padding: .8rem 1.75rem;
+    padding: .85rem 2rem;
     border-radius: 999px;
     text-decoration: none;
-    transition: background .15s, transform .1s;
-    box-shadow: 0 2px 12px rgba(34,197,94,.3);
+    transition: background .15s, transform .12s, box-shadow .15s;
+    box-shadow: 0 4px 18px rgba(37,211,102,.35);
+    letter-spacing: .01em;
   }
-  .cta:hover { background: var(--wa-dark); transform: translateY(-1px); }
+  .cta:hover {
+    background: var(--wa-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(37,211,102,.40);
+  }
   .cta svg { width: 18px; height: 18px; }
   .cta-note {
     font-size: .8rem;
-    color: var(--muted);
+    color: var(--faint);
+  }
+
+  /* ── SECTION SHARED ── */
+  .section-label {
+    text-align: center;
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--saffron);
+    font-weight: 600;
+    margin-bottom: 2.75rem;
   }
 
   /* ── AUDIENCES ── */
   .audiences-section {
-    padding: 4.5rem 1.5rem 3rem;
-    max-width: 1000px;
+    padding: 5rem 1.5rem 3.5rem;
+    max-width: 1040px;
     margin: 0 auto;
     width: 100%;
   }
-  .section-label {
-    text-align: center;
-    font-size: .75rem;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 2.5rem;
-  }
   .audiences {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1.5rem;
   }
   .aud-card {
-    background: var(--white);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 2rem 1.75rem;
+    padding: 2.25rem 2rem;
     display: flex;
     flex-direction: column;
-    gap: .6rem;
-    transition: box-shadow .15s, transform .15s;
+    gap: .65rem;
+    box-shadow: var(--sh-sm);
+    transition: box-shadow .2s, transform .2s;
   }
   .aud-card:hover {
-    box-shadow: 0 4px 24px rgba(0,0,0,.07);
-    transform: translateY(-2px);
+    box-shadow: var(--sh-md);
+    transform: translateY(-3px);
   }
-  .aud-icon { font-size: 1.75rem; margin-bottom: .25rem; }
+  .aud-icon {
+    font-size: 2rem;
+    margin-bottom: .1rem;
+    line-height: 1;
+  }
   .aud-card h3 {
     font-family: 'Lora', serif;
     font-size: 1.2rem;
     font-weight: 600;
+    line-height: 1.3;
   }
   .aud-subtitle {
-    font-size: .72rem;
-    font-weight: 500;
-    color: var(--gold);
-    letter-spacing: .07em;
+    font-size: .71rem;
+    font-weight: 600;
+    color: var(--saffron);
+    letter-spacing: .09em;
     text-transform: uppercase;
-    margin-top: -.2rem;
+    margin-top: -.25rem;
   }
   .aud-card p {
     font-size: .9rem;
     color: var(--muted);
-    line-height: 1.65;
-    margin-top: .2rem;
+    line-height: 1.7;
+    margin-top: .15rem;
   }
   .aud-examples {
     display: flex;
@@ -212,46 +258,61 @@ _PAGE = """<!DOCTYPE html>
     margin-top: .5rem;
   }
   .aud-tag {
-    font-size: .72rem;
-    background: var(--cream);
-    color: var(--muted);
-    border: 1px solid var(--border);
+    font-size: .71rem;
+    background: var(--saffron-bg);
+    color: var(--saffron-dk);
+    border: 1px solid rgba(217,119,6,.18);
     border-radius: 999px;
-    padding: .2rem .65rem;
+    padding: .22rem .7rem;
+    font-weight: 500;
   }
 
   /* ── HOW IT WORKS ── */
   .how {
-    background: var(--white);
+    background: linear-gradient(160deg, #FFF9F2 0%, #FEF3DC 100%);
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    padding: 4rem 1.5rem;
+    padding: 5rem 1.5rem;
   }
   .how-inner {
-    max-width: 900px;
+    max-width: 960px;
     margin: 0 auto;
   }
   .steps {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.5rem;
-    position: relative;
   }
   .step {
-    background: var(--cream);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.75rem 1.5rem;
+    background: rgba(255,255,255,.80);
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 20px;
+    padding: 2rem 1.75rem;
     display: flex;
     flex-direction: column;
-    gap: .6rem;
+    gap: .65rem;
+    box-shadow: var(--sh-sm);
+    backdrop-filter: blur(4px);
+    transition: box-shadow .2s, transform .2s;
   }
-  .step-num {
+  .step:hover {
+    box-shadow: var(--sh-md);
+    transform: translateY(-2px);
+  }
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--saffron);
+    color: #fff;
+    border-radius: 50%;
     font-size: .72rem;
-    font-weight: 500;
-    color: var(--gold);
-    letter-spacing: .06em;
-    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: .02em;
+    flex-shrink: 0;
+    margin-bottom: .1rem;
   }
   .step h3 {
     font-family: 'Lora', serif;
@@ -262,9 +323,9 @@ _PAGE = """<!DOCTYPE html>
   .step p {
     font-size: .88rem;
     color: var(--muted);
-    line-height: 1.6;
+    line-height: 1.65;
   }
-  .step-icon { font-size: 1.5rem; margin-bottom: .25rem; }
+  .step-icon { font-size: 1.5rem; line-height: 1; }
 
   /* ── LANG STRIP ── */
   .lang-strip {
@@ -275,6 +336,7 @@ _PAGE = """<!DOCTYPE html>
     flex-wrap: wrap;
     gap: .5rem 1rem;
     border-bottom: 1px solid var(--border);
+    background: var(--surface);
   }
   .lang-strip span {
     font-size: .8rem;
@@ -283,74 +345,87 @@ _PAGE = """<!DOCTYPE html>
   }
   .lang-script {
     font-family: 'Lora', serif;
-    color: var(--gold);
-    opacity: .7;
+    color: var(--saffron);
   }
-  .sep { opacity: .35; }
+  .sep { color: var(--border); font-weight: 300; }
 
   /* ── QUOTE ── */
   .quote-wrap {
-    padding: 4rem 1.5rem;
+    padding: 5rem 1.5rem;
     text-align: center;
+    position: relative;
+  }
+  .quote-mark {
+    font-family: 'Lora', serif;
+    font-size: 6rem;
+    line-height: .8;
+    color: var(--saffron);
+    opacity: .15;
+    display: block;
+    margin-bottom: -1.5rem;
+    user-select: none;
   }
   blockquote {
     font-family: 'Lora', serif;
-    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    font-size: clamp(1.1rem, 2.5vw, 1.45rem);
     font-style: italic;
     color: var(--ink);
-    max-width: 600px;
+    max-width: 620px;
     margin: 0 auto;
-    line-height: 1.7;
+    line-height: 1.75;
   }
   blockquote cite {
     display: block;
-    margin-top: 1rem;
+    margin-top: 1.25rem;
     font-size: .82rem;
     font-style: normal;
-    color: var(--muted);
-    letter-spacing: .03em;
+    color: var(--faint);
+    letter-spacing: .04em;
+    font-family: 'Inter', sans-serif;
   }
 
   /* ── FOOTER ── */
   footer {
-    padding: 1.5rem 2rem;
+    padding: 1.5rem 2.5rem;
     border-top: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: .75rem;
+    background: var(--surface);
   }
-  footer p { font-size: .8rem; color: var(--muted); }
+  footer p { font-size: .8rem; color: var(--faint); }
   .health-dot {
     display: inline-flex;
     align-items: center;
-    gap: .35rem;
+    gap: .4rem;
     font-size: .78rem;
-    color: var(--muted);
+    color: var(--faint);
   }
   .dot {
     width: 7px; height: 7px;
     background: var(--wa);
     border-radius: 50%;
-    animation: pulse 2s infinite;
+    animation: pulse 2.5s ease-in-out infinite;
   }
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: .35; }
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .4; transform: scale(.85); }
   }
 
   @media (max-width: 600px) {
     nav { padding: 1rem 1.25rem; }
-    .hero { padding: 4rem 1.25rem 3rem; }
-    .cta-row { flex-direction: column; gap: .6rem; }
+    .hero { padding: 4.5rem 1.25rem 3.5rem; }
+    .cta-row { flex-direction: column; gap: .65rem; }
     footer { flex-direction: column; align-items: flex-start; }
+    .audiences-section { padding: 3.5rem 1rem 2.5rem; }
   }
 </style>
 </head>
 <body>
 
-<div class="devanagari">स्मृति</div>
+<div class="devanagari" aria-hidden="true">स्मृति</div>
 
 <nav>
   <a class="logo" href="/">smriti<span>.</span></a>
@@ -359,7 +434,7 @@ _PAGE = """<!DOCTYPE html>
 
 <section class="hero">
   <div class="badge">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.83L0 24l6.364-1.499A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.83L0 24l6.364-1.499A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
     WhatsApp-native &middot; Made for India
   </div>
 
@@ -367,11 +442,11 @@ _PAGE = """<!DOCTYPE html>
 
   <p class="tagline">Some memories deserve to outlive the moment.</p>
 
-  <p class="sub">Your dadi's stories. Your college friendships. Your child growing up. Just send a voice note on WhatsApp — smriti captures, organizes, and preserves it forever.</p>
+  <p class="sub">Your dadi's stories. Your college friendships. Your child growing up. Every week smriti asks a gentle question on WhatsApp — just reply with a voice note or a few words.</p>
 
   <div class="cta-row">
     <a class="cta" href="mailto:vbajaj56@gmail.com?subject=smriti — get started">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.83L0 24l6.364-1.499A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.107 1.523 5.83L0 24l6.364-1.499A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
       Start preserving
     </a>
     <span class="cta-note">No app needed &middot; Just WhatsApp</span>
@@ -428,22 +503,22 @@ _PAGE = """<!DOCTYPE html>
     <p class="section-label">How it works</p>
     <div class="steps">
       <div class="step">
-        <div class="step-icon">🎙️</div>
-        <p class="step-num">Step 1</p>
-        <h3>Just send a voice note</h3>
-        <p>Add smriti on WhatsApp. Send a voice note, forward one your dadi sent, share a photo, type a memory — whatever feels natural. No app to download.</p>
+        <div class="step-icon">💛</div>
+        <div class="step-badge">1</div>
+        <h3>You gift it to them</h3>
+        <p>The grandchild signs up smriti for their grandparent. No app to install on either side — just a WhatsApp number and a name.</p>
       </div>
       <div class="step">
         <div class="step-icon">✨</div>
-        <p class="step-num">Step 2</p>
-        <h3>AI captures the story</h3>
-        <p>smriti transcribes in Hindi, Punjabi, English, or any language. The AI organizes it by theme — childhood, family history, recipes, your own nostalgia.</p>
+        <div class="step-badge">2</div>
+        <h3>One question, every week</h3>
+        <p>smriti sends a gentle prompt to the grandparent on WhatsApp — in Hindi, Punjabi, or English. They just reply with a voice note or a few words.</p>
       </div>
       <div class="step">
         <div class="step-icon">🗂️</div>
-        <p class="step-num">Step 3</p>
+        <div class="step-badge">3</div>
         <h3>A living archive grows</h3>
-        <p>Every memory is saved to a private timeline. Searchable, shareable with family, and there forever — a book, videos, an archive. Yours to keep.</p>
+        <p>Every memory is saved, AI-enhanced, and turned into a private timeline — shareable with family, and yours to keep as a book and video forever.</p>
       </div>
     </div>
   </div>
@@ -468,6 +543,7 @@ _PAGE = """<!DOCTYPE html>
 
 <!-- Quote -->
 <div class="quote-wrap">
+  <span class="quote-mark" aria-hidden="true">"</span>
   <blockquote>
     "Remember the story dadi told at the last family gathering?<br>
     You don't. Neither do we.<br>

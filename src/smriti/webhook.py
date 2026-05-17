@@ -154,6 +154,7 @@ async def whatsapp_webhook(
         reply_text = Body.strip()
         voice_note_url = ""
         photo_url = ""
+        photo_data: bytes | None = None
         num_media = int(NumMedia)
 
         if num_media > 0:
@@ -168,12 +169,17 @@ async def whatsapp_webhook(
                     send_message(phone, _VOICE_ERROR.get(gp.language, _VOICE_ERROR["english"]))
                     return ""
             elif "image" in content_type:
-                photo_url = MediaUrl0
-                # Use body text as reply if provided alongside the photo
+                try:
+                    photo_data = download_voice_note(MediaUrl0)  # same auth, same function
+                    photo_url = f"{config.webhook_base_url}/media/photo/PENDING"  # set after save
+                except Exception:
+                    logger.exception("Photo download failed for %s — storing Twilio URL as fallback", phone)
+                    photo_url = MediaUrl0  # fallback: use Twilio URL even if it expires
                 if not reply_text:
                     reply_text = "📷"  # placeholder so the story is saved
 
-        if not reply_text:
+        # Guard: don't save trivial greetings as memoir entries
+        if not reply_text or (len(reply_text.strip()) < 15 and not photo_data and not voice_note_url):
             return ""
 
         prompt_text = get_prompt(gp.prompt_index, Language(gp.language))
@@ -184,21 +190,20 @@ async def whatsapp_webhook(
             reply_text=reply_text,
             voice_note_url=voice_note_url,
             photo_url=photo_url,
+            photo_data=photo_data,
             twilio_message_sid=MessageSid,
         )
         saved = save_story(story)
+
+        # Update photo_url to point to our permanent endpoint now that we have story.id
+        if photo_data and saved.id:
+            from .db import update_story_fields
+            photo_url = f"{config.webhook_base_url}/media/photo/{saved.id}"
+            update_story_fields(saved.id, photo_url=photo_url)
+
         advance_prompt(gp.id)
 
-        # Fire AI pipeline in background (non-blocking)
-        background_tasks.add_task(
-            _run_ai_pipeline,
-            story_id=saved.id,
-            prompt_text=prompt_text,
-            reply_text=reply_text,
-            grandparent_name=gp.name,
-            language=gp.language,
-            week=gp.prompt_index + 1,
-        )
+        # AI enhancement + video are processed by /cron/process-pending (avoids Vercel timeout)
 
         send_message(
             phone,

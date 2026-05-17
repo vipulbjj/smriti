@@ -246,7 +246,7 @@ async function genBook(familyId, btn) {{
 }}
 
 async function showStories(gpId, name) {{
-  document.getElementById('modal-title').textContent = name + ''s stories';
+  document.getElementById('modal-title').textContent = name + "'s stories";
   document.getElementById('modal-body').innerHTML = '<p style="color:var(--muted)">Loading…</p>';
   document.getElementById('modal').classList.add('open');
   const res = await apiFetch(`/admin/api/stories/${{gpId}}`);

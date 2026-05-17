@@ -15,7 +15,7 @@ Commands are detected before regular story processing in the webhook.
 import logging
 from typing import Optional
 
-from sqlmodel import desc, select
+from sqlmodel import desc, func, select
 
 from .config import config
 from .db import Grandparent, Story, Family, open_session
@@ -135,9 +135,9 @@ def handle_command(cmd: str, gp: Grandparent) -> None:
 
     elif cmd == "stories":
         with open_session() as session:
-            count = len(session.exec(
-                select(Story).where(Story.grandparent_id == gp.id)
-            ).all())
+            count = session.exec(
+                select(func.count(Story.id)).where(Story.grandparent_id == gp.id)
+            ).one()
             family = session.get(Family, gp.family_id)
         token = family.timeline_token if family else ""
         url = f"{config.webhook_base_url}/family/{token}" if token else config.webhook_base_url

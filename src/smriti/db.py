@@ -53,8 +53,10 @@ class Story(SQLModel, table=True):
     reply_text: str = ""
     enhanced_text: str = ""        # AI-polished prose version of reply_text
     voice_note_url: str = ""
-    photo_url: str = ""            # WhatsApp photo attachment URL
-    audio_url: str = ""            # TTS-generated audio URL
+    photo_url: str = ""            # Serves /media/photo/{story_id} after download
+    photo_data: Optional[bytes] = Field(default=None)   # Raw photo bytes (permanent)
+    audio_url: str = ""            # Serves /media/audio/{story_id}
+    audio_data: Optional[bytes] = Field(default=None)   # Cached TTS bytes
     video_job_id: str = ""         # Shotstack render job ID
     video_url: str = ""            # Final video URL when render completes
     twilio_message_sid: str = Field(default="", index=True)
@@ -111,6 +113,7 @@ def advance_prompt(grandparent_id: int) -> None:
             gp.prompt_index += 1
             if gp.prompt_index >= 52:
                 gp.active = False
+            gp.last_prompted_at = None  # clear so reminders don't fire for the next unsent prompt
             session.add(gp)
             session.commit()
 
@@ -148,26 +151,24 @@ def mark_prompted(grandparent_id: int) -> None:
 def get_grandparents_needing_reminder(days: int = 3) -> list[Grandparent]:
     """Return active grandparents prompted >N days ago who haven't replied yet."""
     from datetime import timedelta
+    from sqlalchemy import not_, exists
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     with open_session() as session:
-        candidates = session.exec(
+        # Single query: grandparents prompted long ago with no story at current prompt_index
+        story_exists = (
+            select(Story).where(
+                Story.grandparent_id == Grandparent.id,
+                Story.prompt_index == Grandparent.prompt_index,
+            ).exists()
+        )
+        return list(session.exec(
             select(Grandparent).where(
                 Grandparent.active == True,
                 Grandparent.last_prompted_at != None,
                 Grandparent.last_prompted_at < cutoff,
+                not_(story_exists),
             )
-        ).all()
-        result = []
-        for gp in candidates:
-            has_replied = session.exec(
-                select(Story).where(
-                    Story.grandparent_id == gp.id,
-                    Story.prompt_index == gp.prompt_index,
-                )
-            ).first() is not None
-            if not has_replied:
-                result.append(gp)
-        return result
+        ).all())
 
 
 def get_family_by_token(token: str) -> Optional["Family"]:

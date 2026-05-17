@@ -23,6 +23,10 @@
     {
       "path": "/cron/poll-videos",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/cron/process-pending",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

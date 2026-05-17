@@ -1,9 +1,10 @@
 """
 Vercel Cron endpoints — called by Vercel's scheduler with Bearer auth.
 
-  GET /cron/send-prompts   Monday 09:00 IST (03:30 UTC Mon)
-  GET /cron/send-reminders Thursday 09:00 IST (03:30 UTC Thu)
-  GET /cron/poll-videos    Hourly — check pending Shotstack renders
+  GET /cron/send-prompts      Monday 09:00 IST (03:30 UTC Mon)
+  GET /cron/send-reminders    Thursday 09:00 IST (03:30 UTC Thu)
+  GET /cron/poll-videos       Hourly — check pending Shotstack renders
+  GET /cron/process-pending   Every 15 min — AI enhance + submit video jobs
 """
 
 import logging
@@ -11,7 +12,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from .config import config
-from .scheduler import send_weekly_prompts, send_reminders
+from .scheduler import send_weekly_prompts, send_reminders, process_pending_stories
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -71,10 +72,7 @@ def _poll_pending_videos() -> int:
     for story_id, job_id, prompt_index, phone, language, name in rows:
         url = get_video_url(job_id)
         if url:
-            update_story_fields(story_id, video_url=url)
-            updated += 1
-            logger.info("Video ready for story %d: %s", story_id, url)
-            # Send to grandparent
+            # Send first — only mark done if send succeeds (so failed sends retry next poll)
             if phone:
                 try:
                     caption = {
@@ -85,6 +83,18 @@ def _poll_pending_videos() -> int:
                     send_media_message(phone, caption, url)
                     logger.info("Video sent to %s for story %d", name, story_id)
                 except Exception:
-                    logger.exception("Failed to send video to %s", name)
+                    logger.exception("Failed to send video to %s — will retry next poll", name)
+                    continue  # skip DB update so this story is retried next time
+            update_story_fields(story_id, video_url=url)
+            updated += 1
+            logger.info("Video marked done for story %d: %s", story_id, url)
 
     return updated
+
+
+@router.get("/cron/process-pending", include_in_schema=False)
+def cron_process_pending(request: Request):
+    _check_secret(request)
+    processed = process_pending_stories()
+    logger.info("Cron process-pending: processed %d stories", processed)
+    return {"processed": processed}

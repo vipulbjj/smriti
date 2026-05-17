@@ -29,14 +29,20 @@ def generate_audio_gtts(text: str, language: str = "hindi") -> bytes:
     return buf.getvalue()
 
 
-def generate_audio_elevenlabs(text: str) -> Optional[bytes]:
+_ELEVENLABS_VOICE = {
+    "hindi": config.elevenlabs_voice_hindi,
+    "english": config.elevenlabs_voice_english,
+    "punjabi": config.elevenlabs_voice_punjabi,
+}
+
+
+def generate_audio_elevenlabs(text: str, language: str = "english") -> Optional[bytes]:
     """Generate higher-quality audio via ElevenLabs (10K chars/month free)."""
     if not config.elevenlabs_api_key:
         return None
     try:
         import httpx
-        # Rachel voice — warm, clear
-        voice_id = "21m00Tcm4TlvDq8ikWAM"
+        voice_id = _ELEVENLABS_VOICE.get(language, config.elevenlabs_voice_english)
         resp = httpx.post(
             f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
             headers={
@@ -62,7 +68,7 @@ def get_story_audio(story: Story, language: str) -> bytes:
     text = story.enhanced_text or story.reply_text
     if not text:
         text = story.prompt_text
-    audio = generate_audio_elevenlabs(text) if config.elevenlabs_api_key else None
+    audio = generate_audio_elevenlabs(text, language) if config.elevenlabs_api_key else None
     if audio is None:
         audio = generate_audio_gtts(text, language)
     return audio
@@ -70,16 +76,28 @@ def get_story_audio(story: Story, language: str) -> bytes:
 
 @router.get("/media/audio/{story_id}", include_in_schema=False)
 def serve_story_audio(story_id: int):
-    """Stream TTS audio for a story. Generated on-demand — no storage needed."""
-    from sqlmodel import select
-    from .db import Grandparent
+    """Stream TTS audio for a story. Cached in story.audio_data after first generation."""
+    from .db import Grandparent, update_story_fields
 
     with open_session() as session:
         story = session.get(Story, story_id)
         if not story:
             return Response(status_code=404)
+        if story.audio_data:
+            return Response(content=story.audio_data, media_type="audio/mpeg")
         gp = session.get(Grandparent, story.grandparent_id)
         language = gp.language if gp else "english"
 
     audio = get_story_audio(story, language)
+    update_story_fields(story_id, audio_data=audio)
     return Response(content=audio, media_type="audio/mpeg")
+
+
+@router.get("/media/photo/{story_id}", include_in_schema=False)
+def serve_story_photo(story_id: int):
+    """Serve a photo attached to a story. Bytes stored permanently in story.photo_data."""
+    with open_session() as session:
+        story = session.get(Story, story_id)
+        if not story or not story.photo_data:
+            return Response(status_code=404)
+        return Response(content=story.photo_data, media_type="image/jpeg")

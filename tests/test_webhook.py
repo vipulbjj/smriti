@@ -131,7 +131,7 @@ def test_prompt_index_advances_after_reply(mock_send, client, seeded_grandparent
         "/webhook/whatsapp",
         data={
             "From": "whatsapp:+919876543211",
-            "Body": "First story",
+            "Body": "मेरी पहली कहानी यहाँ है।",  # >15 chars — passes the length guard
             "NumMedia": "0",
         },
     )
@@ -169,7 +169,7 @@ def test_duplicate_message_sid_ignored(mock_send, client, seeded_grandparent):
     family, gp = seeded_grandparent
     payload = {
         "From": "whatsapp:+919876543211",
-        "Body": "एक बार की बात है।",
+        "Body": "एक बार की बात है, जब मैं छोटा था।",
         "NumMedia": "0",
         "MessageSid": "SM_TEST_DEDUP_001",
     }
@@ -223,7 +223,7 @@ def test_completion_notifies_grandchild(mock_send, client, seeded_grandparent):
         "/webhook/whatsapp",
         data={
             "From": "whatsapp:+919876543211",
-            "Body": "आखिरी जवाब।",
+            "Body": "यह मेरा आखिरी जवाब है, बहुत अच्छा लगा।",
             "NumMedia": "0",
         },
     )
@@ -233,3 +233,72 @@ def test_completion_notifies_grandchild(mock_send, client, seeded_grandparent):
     phones_called = {call[0][0] for call in mock_send.call_args_list}
     assert "+919876543211" in phones_called   # grandparent ACK
     assert "+919876543210" in phones_called   # grandchild notification
+
+
+@patch("smriti.webhook.send_message")
+@patch("smriti.webhook.download_voice_note", return_value=b"fake_photo_bytes")
+def test_photo_attachment_stored_permanently(mock_download, mock_send, client, seeded_grandparent):
+    """Photos must be downloaded at receive time and stored as bytes, not as a Twilio URL."""
+    family, gp = seeded_grandparent
+    response = client.post(
+        "/webhook/whatsapp",
+        data={
+            "From": "whatsapp:+919876543211",
+            "Body": "",
+            "NumMedia": "1",
+            "MediaUrl0": "https://api.twilio.com/fake/media/photo123",
+            "MediaContentType0": "image/jpeg",
+            "MessageSid": "SM_PHOTO_TEST_001",
+        },
+    )
+    assert response.status_code == 200
+
+    mock_download.assert_called_once_with("https://api.twilio.com/fake/media/photo123")
+
+    pairs = get_family_stories(family.id)
+    _, stories = pairs[0]
+    assert len(stories) == 1
+    story = stories[0]
+    assert story.photo_data == b"fake_photo_bytes"
+    # photo_url must point to our permanent endpoint, not the Twilio URL
+    assert "/media/photo/" in story.photo_url
+    assert "twilio.com" not in story.photo_url
+
+
+@patch("smriti.webhook.send_message")
+def test_short_message_not_saved(mock_send, client, seeded_grandparent):
+    """Greetings and accidental taps under 15 chars should not create a memoir entry."""
+    family, gp = seeded_grandparent
+    client.post(
+        "/webhook/whatsapp",
+        data={
+            "From": "whatsapp:+919876543211",
+            "Body": "ok",
+            "NumMedia": "0",
+        },
+    )
+    pairs = get_family_stories(family.id)
+    _, stories = pairs[0]
+    assert len(stories) == 0
+    mock_send.assert_not_called()
+
+
+@patch("smriti.webhook.send_message")
+def test_digest_sent_to_grandchild_after_story(mock_send, client, seeded_grandparent):
+    """After saving a story (non-completion), the grandchild receives a weekly digest."""
+    family, gp = seeded_grandparent
+
+    with patch("smriti.webhook._do_send_digest") as mock_digest:
+        client.post(
+            "/webhook/whatsapp",
+            data={
+                "From": "whatsapp:+919876543211",
+                "Body": "मैं अमृतसर के पास एक छोटे से गाँव में पला-बढ़ा था।",
+                "NumMedia": "0",
+            },
+        )
+        # Digest is queued as a background task; verify the background function was called
+        mock_digest.assert_called_once()
+        call_kwargs = mock_digest.call_args[1]
+        assert call_kwargs["grandparent_name"] == "Nanu"
+        assert call_kwargs["family_id"] == family.id

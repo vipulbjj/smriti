@@ -30,6 +30,10 @@ _IS_VERCEL = bool(os.environ.get("VERCEL"))
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _scheduler
+    if _IS_VERCEL and config.database_url.startswith("sqlite"):
+        raise RuntimeError(
+            "SQLite is not supported on Vercel — set DATABASE_URL to a PostgreSQL connection string"
+        )
     init_db()
     if not _IS_VERCEL:
         _scheduler = start_scheduler()

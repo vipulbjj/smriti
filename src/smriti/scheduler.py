@@ -10,7 +10,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlmodel import select
 
-from .db import Grandparent, open_session, mark_prompted, get_grandparents_needing_reminder
+from .config import config
+from .db import Grandparent, Story, open_session, mark_prompted, get_grandparents_needing_reminder, update_story_fields
 from .prompts import format_whatsapp_prompt, Language
 from .whatsapp import send_message
 
@@ -81,6 +82,60 @@ def send_reminders() -> int:
     return sent
 
 
+def process_pending_stories() -> int:
+    """AI-enhance and submit Shotstack video jobs for stories not yet processed."""
+    processed = 0
+    with open_session() as session:
+        pending = session.exec(
+            select(Story).where(
+                Story.reply_text != "",
+                Story.enhanced_text == "",
+                Story.video_job_id == "",
+            )
+        ).all()
+        rows = [
+            (s.id, s.prompt_text, s.reply_text, s.prompt_index,
+             session.get(Grandparent, s.grandparent_id))
+            for s in pending
+        ]
+
+    for story_id, prompt_text, reply_text, week, gp in rows:
+        if not gp:
+            continue
+        enhanced = None
+        try:
+            from .ai import enhance_story
+            enhanced = enhance_story(prompt_text, reply_text, gp.name, gp.language)
+            if enhanced:
+                update_story_fields(story_id, enhanced_text=enhanced)
+                logger.info("Enhanced story %d", story_id)
+        except Exception:
+            logger.exception("AI enhancement failed for story %d", story_id)
+
+        try:
+            from .video import submit_story_video
+            text_for_video = enhanced if enhanced else reply_text
+            audio_url = f"{config.webhook_base_url}/media/audio/{story_id}"
+            job_id = submit_story_video(
+                story_id=story_id,
+                story_text=text_for_video,
+                grandparent_name=gp.name,
+                week_number=week,
+                language=gp.language,
+                audio_url=audio_url if config.shotstack_api_key else None,
+            )
+            if job_id:
+                update_story_fields(story_id, video_job_id=job_id)
+                logger.info("Video job submitted for story %d: %s", story_id, job_id)
+        except Exception:
+            logger.exception("Video pipeline failed for story %d", story_id)
+
+        processed += 1
+
+    logger.info("process_pending_stories: processed %d", processed)
+    return processed
+
+
 def start(run_immediately: bool = False) -> BackgroundScheduler:
     scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
     # Monday 9:00 AM IST — send weekly prompts
@@ -95,6 +150,13 @@ def start(run_immediately: bool = False) -> BackgroundScheduler:
         send_reminders,
         CronTrigger(day_of_week="thu", hour=9, minute=0),
         id="send_reminders",
+        replace_existing=True,
+    )
+    # Every 15 minutes — AI enhance + Shotstack video submission
+    scheduler.add_job(
+        process_pending_stories,
+        CronTrigger(minute="*/15"),
+        id="process_pending",
         replace_existing=True,
     )
     scheduler.start()
