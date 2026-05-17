@@ -9,8 +9,8 @@ _PAGE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>smriti — preserve your memories</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23D97706'/><text x='16' y='24' font-size='20' font-weight='bold' text-anchor='middle' fill='white' font-family='Georgia,serif'>&#x938;</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23D97706'/><text x='16' y='24' font-size='20' font-weight='bold' text-anchor='middle' fill='white' font-family='Georgia,serif'>&#x938;</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233B2C8F'/><text x='16' y='24' font-size='20' font-weight='bold' text-anchor='middle' fill='%23F0C84A' font-family='Georgia,serif'>&#x938;</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233B2C8F'/><text x='16' y='24' font-size='20' font-weight='bold' text-anchor='middle' fill='%23F0C84A' font-family='Georgia,serif'>&#x938;</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -18,31 +18,37 @@ _PAGE = """<!DOCTYPE html>
 
   :root {
     /* Surfaces */
-    --page:         #FDFBF7;
+    --page:         #F9F6F1;
     --surface:      #FFFFFF;
 
     /* Typography */
-    --ink:          #1B1108;
-    --muted:        #6B5F54;
-    --faint:        #9E8E82;
+    --ink:          #18102E;
+    --muted:        #524770;
+    --faint:        #8B82A0;
 
-    /* Brand — marigold saffron */
-    --saffron:      #D97706;
-    --saffron-dk:   #B45309;
-    --saffron-bg:   #FEF6E4;
-    --saffron-glow: rgba(217,119,6,.18);
+    /* Brand — deep indigo */
+    --indigo:       #3B2C8F;
+    --indigo-dk:    #291E6A;
+    --indigo-lt:    #5848B4;
+    --indigo-bg:    #EDEAF8;
+    --indigo-glow:  rgba(59,44,143,.14);
+
+    /* Warm accent — antique gold */
+    --gold:         #C98B28;
+    --gold-dk:      #A5701E;
+    --gold-bg:      #FDF6E3;
 
     /* Layout */
-    --border:       #E8DDD0;
+    --border:       #DDD7EE;
 
     /* WhatsApp */
     --wa:           #25D366;
     --wa-dark:      #128C7E;
 
-    /* Shadows */
-    --sh-sm:  0 1px 6px rgba(90,50,10,.07);
-    --sh-md:  0 4px 24px rgba(90,50,10,.10);
-    --sh-lg:  0 12px 48px rgba(90,50,10,.13);
+    /* Shadows — cool-warm indigo base */
+    --sh-sm:  0 1px 6px rgba(26,18,48,.07);
+    --sh-md:  0 4px 24px rgba(26,18,48,.10);
+    --sh-lg:  0 12px 48px rgba(26,18,48,.14);
   }
 
   html { scroll-behavior: smooth; }
@@ -63,8 +69,8 @@ _PAGE = """<!DOCTYPE html>
     align-items: center;
     padding: 1.25rem 2.5rem;
     border-bottom: 1px solid var(--border);
-    background: rgba(253,251,247,.85);
-    backdrop-filter: blur(8px);
+    background: rgba(249,246,241,.88);
+    backdrop-filter: blur(10px);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -77,7 +83,7 @@ _PAGE = """<!DOCTYPE html>
     color: var(--ink);
     text-decoration: none;
   }
-  .logo span { color: var(--saffron); }
+  .logo span { color: var(--gold); }
   .nav-tag {
     font-size: .75rem;
     color: var(--faint);
@@ -98,16 +104,16 @@ _PAGE = """<!DOCTYPE html>
     position: relative;
     overflow: hidden;
     background:
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(217,119,6,.10) 0%, transparent 70%),
-      radial-gradient(ellipse 60% 50% at 100% 100%, rgba(234,119,20,.07) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,44,143,.09) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 50% at 100% 100%, rgba(201,139,40,.07) 0%, transparent 60%),
       var(--page);
   }
   .devanagari {
     font-family: 'Lora', 'Noto Serif Devanagari', serif;
     font-size: clamp(5rem, 18vw, 11rem);
     line-height: 1;
-    color: var(--saffron);
-    opacity: .07;
+    color: var(--indigo);
+    opacity: .06;
     position: absolute;
     top: 3.5rem;
     left: 50%;
@@ -120,9 +126,9 @@ _PAGE = """<!DOCTYPE html>
     display: inline-flex;
     align-items: center;
     gap: .45rem;
-    background: var(--saffron-bg);
-    color: var(--saffron-dk);
-    border: 1px solid rgba(217,119,6,.22);
+    background: var(--indigo-bg);
+    color: var(--indigo-dk);
+    border: 1px solid rgba(59,44,143,.20);
     font-size: .78rem;
     font-weight: 600;
     padding: .35rem 1rem;
@@ -139,7 +145,7 @@ _PAGE = """<!DOCTYPE html>
     font-weight: 600;
     letter-spacing: -.025em;
   }
-  h1 em { font-style: italic; color: var(--saffron); }
+  h1 em { font-style: italic; color: var(--indigo); }
   .tagline {
     font-family: 'Lora', serif;
     font-size: 1.15rem;
@@ -194,7 +200,7 @@ _PAGE = """<!DOCTYPE html>
     font-size: .72rem;
     letter-spacing: .12em;
     text-transform: uppercase;
-    color: var(--saffron);
+    color: var(--indigo);
     font-weight: 600;
     margin-bottom: 2.75rem;
   }
@@ -240,7 +246,7 @@ _PAGE = """<!DOCTYPE html>
   .aud-subtitle {
     font-size: .71rem;
     font-weight: 600;
-    color: var(--saffron);
+    color: var(--indigo-lt);
     letter-spacing: .09em;
     text-transform: uppercase;
     margin-top: -.25rem;
@@ -259,9 +265,9 @@ _PAGE = """<!DOCTYPE html>
   }
   .aud-tag {
     font-size: .71rem;
-    background: var(--saffron-bg);
-    color: var(--saffron-dk);
-    border: 1px solid rgba(217,119,6,.18);
+    background: var(--indigo-bg);
+    color: var(--indigo-dk);
+    border: 1px solid rgba(59,44,143,.16);
     border-radius: 999px;
     padding: .22rem .7rem;
     font-weight: 500;
@@ -269,7 +275,7 @@ _PAGE = """<!DOCTYPE html>
 
   /* ── HOW IT WORKS ── */
   .how {
-    background: linear-gradient(160deg, #FFF9F2 0%, #FEF3DC 100%);
+    background: linear-gradient(160deg, #F0EDF8 0%, #E6E0F4 100%);
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     padding: 5rem 1.5rem;
@@ -305,7 +311,7 @@ _PAGE = """<!DOCTYPE html>
     justify-content: center;
     width: 28px;
     height: 28px;
-    background: var(--saffron);
+    background: var(--indigo);
     color: #fff;
     border-radius: 50%;
     font-size: .72rem;
@@ -345,7 +351,7 @@ _PAGE = """<!DOCTYPE html>
   }
   .lang-script {
     font-family: 'Lora', serif;
-    color: var(--saffron);
+    color: var(--indigo);
   }
   .sep { color: var(--border); font-weight: 300; }
 
@@ -359,8 +365,8 @@ _PAGE = """<!DOCTYPE html>
     font-family: 'Lora', serif;
     font-size: 6rem;
     line-height: .8;
-    color: var(--saffron);
-    opacity: .15;
+    color: var(--gold);
+    opacity: .30;
     display: block;
     margin-bottom: -1.5rem;
     user-select: none;
