@@ -27,16 +27,23 @@ _scheduler = None
 _IS_VERCEL = bool(os.environ.get("VERCEL"))
 
 
+_DB_AVAILABLE = False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _scheduler
-    if _IS_VERCEL and config.database_url.startswith("sqlite"):
-        raise RuntimeError(
-            "SQLite is not supported on Vercel — set DATABASE_URL to a PostgreSQL connection string"
+    global _scheduler, _DB_AVAILABLE
+    db_url = config.database_url
+    if _IS_VERCEL and (not db_url or db_url.startswith("sqlite")):
+        logger.warning(
+            "No PostgreSQL DATABASE_URL configured — DB-dependent routes (webhook, cron) "
+            "will fail until DATABASE_URL is set to a PostgreSQL connection string in Vercel."
         )
-    init_db()
-    if not _IS_VERCEL:
-        _scheduler = start_scheduler()
+    else:
+        init_db()
+        _DB_AVAILABLE = True
+        if not _IS_VERCEL:
+            _scheduler = start_scheduler()
     yield
     if _scheduler:
         _scheduler.shutdown()
