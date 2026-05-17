@@ -22,6 +22,7 @@ logging.basicConfig(
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
+logger = logging.getLogger(__name__)
 
 _scheduler = None
 _IS_VERCEL = bool(os.environ.get("VERCEL"))
