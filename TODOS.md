@@ -1,53 +1,68 @@
 # smriti — Outstanding TODOs
 
-Items deferred from the May 2026 engineering review. Each has a brief rationale.
+Items deferred from the May 2026 engineering review. Updated 2026-05-26 after the
+hardening pass — most items are now done; remaining work is noted at the bottom.
 
 ---
 
 ## P1 — Before scaling to >10 families
 
-### Alembic database migrations
-SQLModel's `create_all()` only creates missing tables on a fresh DB. Any schema
-change (new column, new index) on an existing production DB requires a migration.
-Set up Alembic with an autogenerate baseline from the current models before the
-first production data lands, so schema evolution is safe.
+### ✅ Alembic database migrations — DONE
+Alembic is set up (`alembic.ini`, `migrations/`). `0001` is the pre-existing
+schema baseline; `0002` adds the photo-story columns, `consented_at`, and the
+`(grandparent_id, prompt_index)` unique constraint. Batch mode is on so ALTERs
+work on SQLite and Postgres.
 
-### PDF object storage (Vercel compatibility)
-`generate_pdf()` in `book.py` writes to a local temp path. On Vercel, `/tmp` is
-ephemeral and the 250 MB limit makes large PDFs risky. Move generated PDFs to S3
-or Cloudflare R2 and return a signed download URL instead of streaming bytes.
+**Runbook:**
+- Fresh DB: `uv run alembic upgrade head`.
+- Existing production DB (schema already matches the baseline): `uv run alembic
+  stamp 0001` once, then `uv run alembic upgrade head` to apply `0002`.
+- ⚠️ Before `0002` on prod: de-duplicate any rows that violate
+  `(grandparent_id, prompt_index)` or the unique-constraint creation will fail.
 
-### Prompt idempotency guard (week-level dedup)
-The webhook deduplicates by `MessageSid` but a grandparent can reply multiple times
-in the same week if they reply to an older WhatsApp thread. Add a DB-level unique
-constraint on `(grandparent_id, prompt_index)` so the second reply is rejected
-gracefully (send a polite "already received your answer this week" message instead
-of a 500).
+### ✅ PDF object storage (Vercel compatibility) — DONE
+`book.generate_book()` now routes through `storage.store_pdf()`: uploads to S3/R2
+and returns a signed URL when `STORAGE_BUCKET` is configured, else returns the
+local path (zero-setup local dev). Needs the `storage` extra (`boto3`) + bucket
+creds to activate in prod.
+
+### ✅ Prompt idempotency guard (week-level dedup) — DONE
+Unique constraint on `Story(grandparent_id, prompt_index)`; `save_story` raises
+`DuplicateStoryError` and the webhook replies "we've already saved your answer
+this week" instead of 500ing.
 
 ---
 
 ## P2 — Trust & legal
 
-### Consent form / opt-in flow
-Currently grandparents are enrolled by the grandchild with no in-band consent
-step. Add a first-message consent prompt: grandparent must reply "HAAN" / "YES" /
-"ਹਾਂ" before their first story is saved. Store `consented_at` on `Grandparent`.
+### ✅ Consent form / opt-in flow — DONE
+`Grandparent.consented_at` added. An unconsented grandparent's first message must
+be an affirmative (HAAN / YES / ਹਾਂ / ji / ठीक है …) before any story is saved;
+otherwise a consent request is sent. Legacy grandparents who already have stories
+are auto-grandfathered.
 
-### Timeline token revocation
-`Family.timeline_token` is a permanent URL. Add an admin endpoint to rotate the
-token (invalidates old shared links) and expose it in the admin dashboard.
+### ✅ Timeline token revocation — DONE
+`POST /admin/api/rotate-token/{family_id}` issues a fresh `timeline_token` and
+invalidates old shared links (`db.rotate_timeline_token`).
 
 ---
 
 ## P3 — Nice to have
 
-### Landing page copy accuracy (D9 from CEO review)
-Current landing page implies the grandparent registers. Fix sub-text and the
-"How it works" Step 1 copy to accurately reflect that the grandchild signs up and
-the grandparent just replies to WhatsApp messages.
+### ✅ Landing page copy accuracy (D9) — ALREADY ACCURATE
+The current "sprint" landing copy already reflects that the grandchild signs up:
+hero — "Your grandparent replies by voice on WhatsApp"; Step 1 — "You start the
+sprint / Tell us their name…"; CTA — "Gift it". No change needed.
 
-### Rate-limit protection on webhook
-A malicious actor who knows a grandparent's WhatsApp number could flood the webhook
-(Twilio signature validation only catches non-Twilio senders). Add a per-phone
-rate limit (e.g. 10 messages/hour) using a Redis counter or an in-memory token
-bucket on non-Vercel deployments.
+### ✅ Rate-limit protection on webhook — DONE
+Per-phone in-memory token bucket (`ratelimit.py`, default 10 msg/hour) guards the
+webhook. Best-effort on serverless (resets on cold start); swap for Redis if a
+hard cross-instance limit is needed.
+
+---
+
+## Still open
+
+- **Redis-backed rate limit** — only if a hard limit across serverless instances
+  is required; the in-memory bucket is sufficient at current scale.
+- **Run `0002` against the live DB** — follow the runbook above once the PR merges.

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from .config import config
@@ -43,9 +44,18 @@ class Grandparent(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # Set each time a weekly prompt is sent — used for 3-day reminder logic
     last_prompted_at: Optional[datetime] = Field(default=None)
+    # Set when the grandparent gives in-band consent (replies HAAN/YES/ਹਾਂ).
+    # None → not yet consented; stories are not saved until this is set.
+    consented_at: Optional[datetime] = Field(default=None)
 
 
 class Story(SQLModel, table=True):
+    # One story per grandparent per weekly prompt — a second reply to the same
+    # week is rejected gracefully rather than creating a duplicate row.
+    __table_args__ = (
+        UniqueConstraint("grandparent_id", "prompt_index", name="uq_story_gp_prompt"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     grandparent_id: int = Field(foreign_key="grandparent.id")
     prompt_index: int
@@ -103,10 +113,23 @@ def get_grandparent_by_phone(phone: str) -> Optional[Grandparent]:
         ).first()
 
 
+class DuplicateStoryError(Exception):
+    """Raised when a story already exists for this (grandparent_id, prompt_index)."""
+
+
 def save_story(story: Story) -> Story:
+    from sqlalchemy.exc import IntegrityError
+
     with open_session() as session:
         session.add(story)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            raise DuplicateStoryError(
+                f"Story already exists for grandparent {story.grandparent_id} "
+                f"week {story.prompt_index}"
+            )
         session.refresh(story)
         return story
 
@@ -143,6 +166,23 @@ def update_story_fields(story_id: int, **fields) -> None:
             session.commit()
 
 
+def mark_consented(grandparent_id: int) -> None:
+    """Record in-band consent (grandparent replied HAAN/YES/ਹਾਂ)."""
+    with open_session() as session:
+        gp = session.get(Grandparent, grandparent_id)
+        if gp and gp.consented_at is None:
+            gp.consented_at = datetime.now(timezone.utc)
+            session.add(gp)
+            session.commit()
+
+
+def grandparent_has_stories(grandparent_id: int) -> bool:
+    with open_session() as session:
+        return session.exec(
+            select(Story).where(Story.grandparent_id == grandparent_id)
+        ).first() is not None
+
+
 def mark_prompted(grandparent_id: int) -> None:
     """Record that a prompt was just sent so we can track 3-day reminder window."""
     with open_session() as session:
@@ -174,6 +214,19 @@ def get_grandparents_needing_reminder(days: int = 3) -> list[Grandparent]:
                 not_(story_exists),
             )
         ).all())
+
+
+def rotate_timeline_token(family_id: int) -> Optional[str]:
+    """Issue a fresh timeline_token for a family, invalidating old shared links.
+    Returns the new token, or None if the family doesn't exist."""
+    with open_session() as session:
+        family = session.get(Family, family_id)
+        if not family:
+            return None
+        family.timeline_token = secrets.token_urlsafe(16)
+        session.add(family)
+        session.commit()
+        return family.timeline_token
 
 
 def get_family_by_token(token: str) -> Optional["Family"]:
