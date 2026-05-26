@@ -20,8 +20,11 @@ class Config:
     replicate_api_token: str = os.environ.get("REPLICATE_API_TOKEN", "")
     # Groq vision model for reading a photo and drafting a story seed + elicitation questions.
     vision_model: str = os.environ.get("VISION_MODEL", "llama-3.2-90b-vision-preview")
-    # "groq" (free) or "openai"
+    # "groq" (free) | "openai" | "huggingface" (self-hosted smriti-whisper service)
     transcription_provider: str = os.environ.get("TRANSCRIPTION_PROVIDER", "groq")
+    # smriti-whisper microservice (used when transcription_provider == "huggingface")
+    whisper_service_url: str = os.environ.get("WHISPER_SERVICE_URL", "")
+    whisper_api_key: str = os.environ.get("WHISPER_API_KEY", "")
     database_url: str = os.environ.get("DATABASE_URL", "sqlite:///smriti.db")
     webhook_base_url: str = os.environ.get("WEBHOOK_BASE_URL", "http://localhost:8000")
     port: int = int(os.environ.get("PORT", "8000"))
