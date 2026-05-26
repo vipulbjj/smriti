@@ -739,6 +739,53 @@ footer a:hover{color:rgba(245,239,227,.5)}
   </div>
 </section>
 
+<!-- TRUST & DIGNITY -->
+<style>
+.trust-sec{background:var(--ivory);padding:7rem 2rem;border-top:1px solid var(--border)}
+.trust-inner{max-width:1100px;margin:0 auto}
+.trust-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:2.5rem;margin-top:3.5rem;
+}
+.trust-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:2.2rem 2rem;transition:box-shadow .35s,transform .35s;
+}
+.trust-card:hover{box-shadow:0 18px 48px rgba(18,8,14,.08);transform:translateY(-4px)}
+.trust-ico{font-size:1.6rem;margin-bottom:1rem}
+.trust-card h3{
+  font-family:'Cormorant Garamond',serif;font-size:1.35rem;font-weight:600;
+  color:var(--ink);margin-bottom:.6rem;letter-spacing:.01em;
+}
+.trust-card p{font-size:.875rem;color:var(--muted);line-height:1.72;font-weight:300}
+@media(max-width:860px){.trust-grid{grid-template-columns:1fr;gap:1.4rem}.trust-sec{padding:5rem 1.5rem}}
+</style>
+<section class="trust-sec">
+  <div class="trust-inner">
+    <div class="section-head reveal" style="text-align:center;max-width:640px;margin:0 auto">
+      <p class="eyebrow" style="color:var(--gold-dk);justify-content:center;display:flex"><span style="display:flex;align-items:center;gap:.6rem"><span style="display:inline-block;width:18px;height:1px;background:var(--gold-dk);opacity:.6"></span>Held with care</span></p>
+      <h2 class="section-h" style="color:var(--ink)">A family's memories deserve<br>more than a server.</h2>
+      <p class="section-p">These are not data points. They are someone's life — so we treat them the way you would.</p>
+    </div>
+    <div class="trust-grid">
+      <div class="trust-card reveal d1">
+        <div class="trust-ico">&#128274;</div>
+        <h3>Yours, always</h3>
+        <p>Every voice note, photo, and story belongs to your family. We never sell them and never train AI on your memories. Ask us to delete everything, and it's gone — completely.</p>
+      </div>
+      <div class="trust-card reveal d2">
+        <div class="trust-ico">&#129309;</div>
+        <h3>Consent before anything</h3>
+        <p>Nothing is recorded without your elder's blessing. We send a gentle opt-in before the very first question. Their comfort and dignity come before the product — always.</p>
+      </div>
+      <div class="trust-card reveal d3">
+        <div class="trust-ico">&#10003;</div>
+        <h3>Reviewed by a person</h3>
+        <p>A real person reviews every memoir before it reaches you &mdash; never a faceless bot. If what we deliver isn't beautiful enough to keep forever, you don't pay. Full refund.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- FINAL CTA -->
 <section class="cta-sec">
   <div class="cta-inner">
