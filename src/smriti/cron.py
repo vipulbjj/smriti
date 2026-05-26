@@ -12,7 +12,12 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from .config import config
-from .scheduler import send_weekly_prompts, send_reminders, process_pending_stories
+from .scheduler import (
+    send_weekly_prompts,
+    send_reminders,
+    process_pending_stories,
+    process_pending_photos,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -96,5 +101,6 @@ def _poll_pending_videos() -> int:
 def cron_process_pending(request: Request):
     _check_secret(request)
     processed = process_pending_stories()
-    logger.info("Cron process-pending: processed %d stories", processed)
-    return {"processed": processed}
+    photos = process_pending_photos()
+    logger.info("Cron process-pending: processed %d stories, %d photos", processed, photos)
+    return {"processed": processed, "photos": photos}

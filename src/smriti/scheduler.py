@@ -136,6 +136,74 @@ def process_pending_stories() -> int:
     return processed
 
 
+def process_pending_photos() -> int:
+    """Run the story-from-image pipeline on photo stories not yet processed.
+
+    For each story with photo bytes but no photo_description yet:
+      1. vision model reads the photo → description + story seed + questions
+      2. open models restore + colorize the photo (best-effort, optional)
+      3. the elicitation questions are sent back to the grandparent on WhatsApp
+    Each stage degrades independently; a missing provider never blocks the others.
+    """
+    processed = 0
+    with open_session() as session:
+        pending = session.exec(
+            select(Story).where(
+                Story.photo_data != None,        # noqa: E711 (SQL IS NOT NULL)
+                Story.photo_description == "",
+            )
+        ).all()
+        rows = [
+            (s.id, s.photo_data, s.prompt_text, s.prompt_index,
+             session.get(Grandparent, s.grandparent_id))
+            for s in pending
+        ]
+
+    from .photo_story import describe_and_story, reconstruct_photo
+
+    for story_id, photo_data, prompt_text, week, gp in rows:
+        if not gp or not photo_data:
+            continue
+
+        result = describe_and_story(
+            photo_bytes=photo_data,
+            grandparent_name=gp.name,
+            language=gp.language,
+            prompt_text=prompt_text,
+        )
+        if result:
+            update_story_fields(
+                story_id,
+                photo_description=result.description,
+                photo_story_text=result.story_seed,
+            )
+            logger.info("Photo story seed generated for story %d", story_id)
+            if result.questions:
+                try:
+                    send_message(gp.phone, result.questions_message(gp.name, gp.language))
+                except Exception:
+                    logger.exception("Failed to send photo questions to %s", gp.name)
+
+        try:
+            restored, colorized = reconstruct_photo(photo_data)
+            fields = {}
+            if restored:
+                fields["restored_photo_data"] = restored
+            if colorized:
+                fields["colorized_photo_data"] = colorized
+            if fields:
+                update_story_fields(story_id, **fields)
+                logger.info("Photo reconstruction done for story %d (%s)",
+                            story_id, ", ".join(fields))
+        except Exception:
+            logger.exception("Photo reconstruction failed for story %d", story_id)
+
+        processed += 1
+
+    logger.info("process_pending_photos: processed %d", processed)
+    return processed
+
+
 def start(run_immediately: bool = False) -> BackgroundScheduler:
     scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
     # Monday 9:00 AM IST — send weekly prompts

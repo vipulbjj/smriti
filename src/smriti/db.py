@@ -54,7 +54,12 @@ class Story(SQLModel, table=True):
     enhanced_text: str = ""        # AI-polished prose version of reply_text
     voice_note_url: str = ""
     photo_url: str = ""            # Serves /media/photo/{story_id} after download
-    photo_data: Optional[bytes] = Field(default=None)   # Raw photo bytes (permanent)
+    photo_data: Optional[bytes] = Field(default=None)   # Raw photo bytes (permanent, never mutated)
+    # --- Photo reconstruction (story-from-image pipeline) ---
+    restored_photo_data: Optional[bytes] = Field(default=None)    # Face-repaired + upscaled
+    colorized_photo_data: Optional[bytes] = Field(default=None)   # B&W → color
+    photo_description: str = ""     # What the vision model literally sees (factual, no invention)
+    photo_story_text: str = ""      # AI story *seed* — scaffolding to elicit the real story, never fact
     audio_url: str = ""            # Serves /media/audio/{story_id}
     audio_data: Optional[bytes] = Field(default=None)   # Cached TTS bytes
     video_job_id: str = ""         # Shotstack render job ID

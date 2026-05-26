@@ -15,6 +15,11 @@ class Config:
     groq_api_key: str = os.environ.get("GROQ_API_KEY", "")
     elevenlabs_api_key: str = os.environ.get("ELEVENLABS_API_KEY", "")
     shotstack_api_key: str = os.environ.get("SHOTSTACK_API_KEY", "")
+    # Replicate hosts the open-source photo models (GFPGAN, Real-ESRGAN, DeOldify).
+    # Absent → photo restoration is skipped; the vision story-seed still runs on Groq.
+    replicate_api_token: str = os.environ.get("REPLICATE_API_TOKEN", "")
+    # Groq vision model for reading a photo and drafting a story seed + elicitation questions.
+    vision_model: str = os.environ.get("VISION_MODEL", "llama-3.2-90b-vision-preview")
     # "groq" (free) or "openai"
     transcription_provider: str = os.environ.get("TRANSCRIPTION_PROVIDER", "groq")
     database_url: str = os.environ.get("DATABASE_URL", "sqlite:///smriti.db")
