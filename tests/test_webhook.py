@@ -3,6 +3,8 @@ Webhook integration tests — no real Twilio or OpenAI calls.
 All external services are mocked.
 """
 
+from datetime import datetime, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
@@ -27,7 +29,9 @@ def use_test_db(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "database_url", f"sqlite:///{db_path}")
     monkeypatch.setattr(config, "validate_twilio_signature", False)
     import smriti.db as db_module
+    from smriti import ratelimit
     db_module._engine = None
+    ratelimit.reset()  # in-memory limiter is module-global — clear between tests
     init_db()
     yield
     db_module._engine = None
@@ -51,6 +55,7 @@ def seeded_grandparent():
             name="Nanu",
             phone="+919876543211",
             language=Language.hindi,
+            consented_at=datetime.now(timezone.utc),  # already opted in (past onboarding)
         )
         session.add(gp)
         session.commit()
@@ -302,3 +307,84 @@ def test_digest_sent_to_grandchild_after_story(mock_send, client, seeded_grandpa
         call_kwargs = mock_digest.call_args[1]
         assert call_kwargs["grandparent_name"] == "Nanu"
         assert call_kwargs["family_id"] == family.id
+
+
+# --- Consent opt-in flow (P2.1) ---
+
+@pytest.fixture
+def unconsented_grandparent():
+    with Session(get_engine(), expire_on_commit=False) as session:
+        family = Family(grandchild_name="Riya", grandchild_phone="+910000000000")
+        session.add(family)
+        session.commit()
+        session.refresh(family)
+        gp = Grandparent(family_id=family.id, name="Dadi", phone="+918888888888",
+                         language=Language.english)  # consented_at defaults None
+        session.add(gp)
+        session.commit()
+        session.refresh(gp)
+        return family, gp
+
+
+@patch("smriti.webhook.send_message")
+def test_unconsented_reply_is_not_saved(mock_send, client, unconsented_grandparent):
+    family, gp = unconsented_grandparent
+    client.post("/webhook/whatsapp", data={
+        "From": "whatsapp:+918888888888",
+        "Body": "I grew up in a small village near Amritsar long ago.",
+        "NumMedia": "0",
+    })
+    # No story saved; a consent request was sent
+    assert get_family_stories(family.id)[0][1] == []
+    assert any("YES" in c.args[1] for c in mock_send.call_args_list)
+
+
+@patch("smriti.webhook.send_message")
+def test_consent_word_opts_in_and_sends_prompt(mock_send, client, unconsented_grandparent):
+    family, gp = unconsented_grandparent
+    client.post("/webhook/whatsapp", data={
+        "From": "whatsapp:+918888888888", "Body": "YES", "NumMedia": "0",
+    })
+    refreshed = get_grandparent_by_phone("+918888888888")
+    assert refreshed.consented_at is not None
+    # thank-you + this week's prompt were sent
+    assert mock_send.call_count >= 2
+
+
+# --- Idempotency guard (P1.3) ---
+
+@patch("smriti.webhook.send_message")
+def test_duplicate_weekly_reply_rejected_gracefully(mock_send, client, seeded_grandparent):
+    family, gp = seeded_grandparent
+    long_a = "मैं अमृतसर के पास एक छोटे से गाँव में पला-बढ़ा था और बहुत यादें हैं।"
+    # First reply at week 0 saves and advances the prompt to week 1.
+    client.post("/webhook/whatsapp", data={
+        "From": "whatsapp:+919876543211", "Body": long_a, "NumMedia": "0",
+        "MessageSid": "SM1",
+    })
+    # Force the grandparent back to week 0 to simulate a late reply to the old thread.
+    from smriti.db import open_session as _os
+    from smriti.db import Grandparent as _GP
+    with _os() as s:
+        g = s.get(_GP, gp.id); g.prompt_index = 0; s.add(g); s.commit()
+    client.post("/webhook/whatsapp", data={
+        "From": "whatsapp:+919876543211", "Body": long_a + " दोबारा अलग बात।", "NumMedia": "0",
+        "MessageSid": "SM2",
+    })
+    # Only one story exists for week 0; a polite duplicate message was sent.
+    stories = get_family_stories(family.id)[0][1]
+    week0 = [s for s in stories if s.prompt_index == 0]
+    assert len(week0) == 1
+    assert any("already" in c.args[1].lower() or "मिल" in c.args[1] for c in mock_send.call_args_list)
+
+
+# --- Rate limit (P3.2) ---
+
+def test_rate_limit_blocks_after_max(monkeypatch):
+    from smriti import ratelimit
+    ratelimit.reset()
+    monkeypatch.setattr(ratelimit, "_MAX", 3)
+    assert [ratelimit.allow("+91777") for _ in range(3)] == [True, True, True]
+    assert ratelimit.allow("+91777") is False
+    # a different phone is unaffected
+    assert ratelimit.allow("+91888") is True

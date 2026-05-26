@@ -277,4 +277,7 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
 
     doc.build(story_elements)
     logger.info("Book generated: %s", output_path)
-    return output_path
+    # On Vercel /tmp is ephemeral — upload to object storage and hand back a
+    # signed URL when configured; otherwise the local path is returned unchanged.
+    from .storage import store_pdf
+    return store_pdf(output_path)

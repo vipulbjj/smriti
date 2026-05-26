@@ -18,14 +18,20 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Re
 from fastapi.responses import PlainTextResponse
 from twilio.request_validator import RequestValidator
 
+from datetime import datetime, timezone
+
 from .commands import detect_command, handle_command
 from .config import config
+from . import ratelimit
 from .db import (
+    DuplicateStoryError,
     Family,
     Language,
     Story,
     advance_prompt,
     get_grandparent_by_phone,
+    grandparent_has_stories,
+    mark_consented,
     open_session,
     save_story,
     story_exists_by_sid,
@@ -54,6 +60,42 @@ _VOICE_ERROR = {
     "hindi": "⚠️ आवाज़ नहीं सुन पाए। क्या आप लिखकर जवाब दे सकते हैं?",
     "english": "⚠️ Couldn't process the voice note. Could you please type your answer?",
     "punjabi": "⚠️ ਆਵਾਜ਼ ਨਹੀਂ ਸੁਣ ਸਕੇ। ਕੀ ਤੁਸੀਂ ਲਿਖ ਕੇ ਜਵਾਬ ਦੇ ਸਕਦੇ ਹੋ?",
+}
+
+# Affirmative consent words across the three languages + common transliterations.
+_CONSENT_WORDS = {
+    "haan", "haa", "ji", "ji haan", "yes", "y", "ok", "okay", "हाँ", "हां", "जी",
+    "जी हाँ", "ठीक है", "ਹਾਂ", "ਜੀ", "ਜੀ ਹਾਂ", "ਠੀਕ ਹੈ",
+}
+
+_CONSENT_REQUEST = {
+    "hindi": (
+        "🙏 नमस्ते {name} जी। आपका परिवार चाहता है कि आपकी जीवन की यादें हमेशा के लिए "
+        "सुरक्षित रहें। हम हर हफ़्ते एक सवाल भेजेंगे — आप आवाज़ या लिखकर जवाब दे सकते हैं।\n\n"
+        "शुरू करने के लिए *हाँ* लिखकर भेजिए।"
+    ),
+    "english": (
+        "🙏 Namaste {name}. Your family would love to preserve your life's memories "
+        "forever. We'll send one gentle question each week — you can reply by voice or text.\n\n"
+        "To begin, please reply *YES*."
+    ),
+    "punjabi": (
+        "🙏 ਸਤ ਸ੍ਰੀ ਅਕਾਲ {name} ਜੀ। ਤੁਹਾਡਾ ਪਰਿਵਾਰ ਚਾਹੁੰਦਾ ਹੈ ਕਿ ਤੁਹਾਡੀਆਂ ਯਾਦਾਂ ਹਮੇਸ਼ਾ "
+        "ਲਈ ਸੰਭਾਲੀਆਂ ਜਾਣ। ਅਸੀਂ ਹਰ ਹਫ਼ਤੇ ਇੱਕ ਸਵਾਲ ਭੇਜਾਂਗੇ।\n\n"
+        "ਸ਼ੁਰੂ ਕਰਨ ਲਈ *ਹਾਂ* ਲਿਖੋ।"
+    ),
+}
+
+_CONSENT_THANKS = {
+    "hindi": "🙏 शुक्रिया {name} जी! चलिए शुरू करते हैं। यह रहा इस हफ़्ते का सवाल:",
+    "english": "🙏 Thank you, {name}! Let's begin. Here is this week's question:",
+    "punjabi": "🙏 ਧੰਨਵਾਦ {name} ਜੀ! ਆਓ ਸ਼ੁਰੂ ਕਰੀਏ। ਇਹ ਰਿਹਾ ਇਸ ਹਫ਼ਤੇ ਦਾ ਸਵਾਲ:",
+}
+
+_DUPLICATE = {
+    "hindi": "🙏 {name} जी, इस हफ़्ते का आपका जवाब हमें मिल चुका है। अगला सवाल जल्द आएगा।",
+    "english": "🙏 {name}, we've already saved your answer for this week. The next question is coming soon.",
+    "punjabi": "🙏 {name} ਜੀ, ਇਸ ਹਫ਼ਤੇ ਦਾ ਤੁਹਾਡਾ ਜਵਾਬ ਮਿਲ ਗਿਆ ਹੈ। ਅਗਲਾ ਸਵਾਲ ਜਲਦੀ ਆਵੇਗਾ।",
 }
 
 _GRANDCHILD_NOTIFICATION = (
@@ -133,6 +175,11 @@ async def whatsapp_webhook(
         if not gp:
             return ""
 
+        # Per-phone flood protection (best-effort; see ratelimit.py).
+        if not ratelimit.allow(phone):
+            logger.warning("Rate limit hit for %s — dropping message", phone)
+            return ""
+
         if not gp.active:
             send_message(
                 phone,
@@ -150,6 +197,26 @@ async def whatsapp_webhook(
             logger.info("Command '%s' from %s", cmd, phone)
             handle_command(cmd, gp)
             return ""
+
+        # Consent gate — no story is saved until the grandparent opts in.
+        # Legacy grandparents who already have stories are grandfathered.
+        if gp.consented_at is None:
+            if grandparent_has_stories(gp.id):
+                mark_consented(gp.id)  # backfill consent for pre-existing participants
+            elif Body.strip().lower() in _CONSENT_WORDS:
+                mark_consented(gp.id)
+                send_message(
+                    phone,
+                    _CONSENT_THANKS.get(gp.language, _CONSENT_THANKS["english"]).format(name=gp.name),
+                )
+                send_message(phone, get_prompt(gp.prompt_index, Language(gp.language)))
+                return ""
+            else:
+                send_message(
+                    phone,
+                    _CONSENT_REQUEST.get(gp.language, _CONSENT_REQUEST["english"]).format(name=gp.name),
+                )
+                return ""
 
         reply_text = Body.strip()
         voice_note_url = ""
@@ -193,7 +260,12 @@ async def whatsapp_webhook(
             photo_data=photo_data,
             twilio_message_sid=MessageSid,
         )
-        saved = save_story(story)
+        try:
+            saved = save_story(story)
+        except DuplicateStoryError:
+            logger.info("Duplicate weekly reply from %s for week %d", phone, gp.prompt_index)
+            send_message(phone, _DUPLICATE.get(gp.language, _DUPLICATE["english"]).format(name=gp.name))
+            return ""
 
         # Update photo_url to point to our permanent endpoint now that we have story.id
         if photo_data and saved.id:

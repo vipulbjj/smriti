@@ -351,6 +351,20 @@ def api_gen_book(family_id: int, request: Request):
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 
+@router.post("/admin/api/rotate-token/{family_id}", include_in_schema=False)
+def api_rotate_token(family_id: int, request: Request):
+    """Rotate a family's timeline_token — invalidates any previously shared link."""
+    if not _auth(request):
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    from .db import rotate_timeline_token
+    new_token = rotate_timeline_token(family_id)
+    if new_token is None:
+        return JSONResponse(status_code=404, content={"detail": "Family not found"})
+    logger.info("Rotated timeline token for family %d", family_id)
+    return {"family_id": family_id, "new_token": new_token,
+            "timeline_url": f"{config.webhook_base_url}/family/{new_token}"}
+
+
 @router.get("/admin/api/stories/{gp_id}", include_in_schema=False)
 def api_get_stories(gp_id: int, request: Request):
     if not _auth(request):
