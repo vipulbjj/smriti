@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Index, text
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from .config import config
@@ -16,7 +16,7 @@ class Language(str, Enum):
 
 
 class SubscriptionTier(str, Enum):
-    whatsapp = "whatsapp"      # ₹15,000/yr
+    whatsapp = "whatsapp"      # guided chapter sprint
     concierge = "concierge"    # ₹25,000 one-time
     ai_vault = "ai_vault"      # ₹50,000–₹1,50,000
 
@@ -42,7 +42,7 @@ class Grandparent(SQLModel, table=True):
     prompt_index: int = 0
     active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    # Set each time a weekly prompt is sent — used for 3-day reminder logic
+    # Set each time a sprint prompt is sent — used for next-day reminders.
     last_prompted_at: Optional[datetime] = Field(default=None)
     # Set when the grandparent gives in-band consent (replies HAAN/YES/ਹਾਂ).
     # None → not yet consented; stories are not saved until this is set.
@@ -50,10 +50,20 @@ class Grandparent(SQLModel, table=True):
 
 
 class Story(SQLModel, table=True):
-    # One story per grandparent per weekly prompt — a second reply to the same
-    # week is rejected gracefully rather than creating a duplicate row.
+    # One story per grandparent per sprint prompt — a second reply to the same
+    # day is rejected gracefully rather than creating a duplicate row.
+    # Photo seeds (is_photo_seed=True) live outside this constraint — they're
+    # created immediately on photo receipt, ahead of the regular reply that
+    # will later land at the same prompt_index.
     __table_args__ = (
-        UniqueConstraint("grandparent_id", "prompt_index", name="uq_story_gp_prompt"),
+        Index(
+            "uq_story_gp_prompt_weekly",
+            "grandparent_id",
+            "prompt_index",
+            unique=True,
+            sqlite_where=text("is_photo_seed = 0"),
+            postgresql_where=text("is_photo_seed = false"),
+        ),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -70,6 +80,7 @@ class Story(SQLModel, table=True):
     colorized_photo_data: Optional[bytes] = Field(default=None)   # B&W → color
     photo_description: str = ""     # What the vision model literally sees (factual, no invention)
     photo_story_text: str = ""      # AI story *seed* — scaffolding to elicit the real story, never fact
+    is_photo_seed: bool = Field(default=False)  # True for photo-only rows outside sprint numbering
     audio_url: str = ""            # Serves /media/audio/{story_id}
     audio_data: Optional[bytes] = Field(default=None)   # Cached TTS bytes
     video_job_id: str = ""         # Shotstack render job ID
@@ -128,18 +139,20 @@ def save_story(story: Story) -> Story:
             session.rollback()
             raise DuplicateStoryError(
                 f"Story already exists for grandparent {story.grandparent_id} "
-                f"week {story.prompt_index}"
+                f"day {story.prompt_index}"
             )
         session.refresh(story)
         return story
 
 
 def advance_prompt(grandparent_id: int) -> None:
+    from .program import SPRINT_LENGTH
+
     with open_session() as session:
         gp = session.get(Grandparent, grandparent_id)
         if gp:
             gp.prompt_index += 1
-            if gp.prompt_index >= 52:
+            if gp.prompt_index >= SPRINT_LENGTH:
                 gp.active = False
             gp.last_prompted_at = None  # clear so reminders don't fire for the next unsent prompt
             session.add(gp)
@@ -184,7 +197,7 @@ def grandparent_has_stories(grandparent_id: int) -> bool:
 
 
 def mark_prompted(grandparent_id: int) -> None:
-    """Record that a prompt was just sent so we can track 3-day reminder window."""
+    """Record that a sprint prompt was sent so we can track the reminder window."""
     with open_session() as session:
         gp = session.get(Grandparent, grandparent_id)
         if gp:

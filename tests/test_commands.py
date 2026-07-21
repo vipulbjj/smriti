@@ -132,7 +132,7 @@ def test_stories_command_shows_count(mock_send, family_and_gp):
     mock_send.assert_called_once()
     msg = mock_send.call_args[0][1]
     assert "3" in msg
-    assert "52" in msg
+    assert "7" in msg
 
 
 @patch("smriti.commands.send_message")

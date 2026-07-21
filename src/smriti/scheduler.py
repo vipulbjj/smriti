@@ -13,17 +13,22 @@ from sqlmodel import select
 from .config import config
 from .db import Grandparent, Story, open_session, mark_prompted, get_grandparents_needing_reminder, update_story_fields
 from .prompts import format_whatsapp_prompt, Language
+from .program import SPRINT_LENGTH
 from .whatsapp import send_message
 
 logger = logging.getLogger(__name__)
 
 
-def send_weekly_prompts() -> int:
-    """Send this week's prompt to every active grandparent. Returns count sent."""
+def send_daily_prompts() -> int:
+    """Send the next prompt once per day to participants ready for one."""
     sent = 0
     with open_session() as session:
         grandparents = session.exec(
-            select(Grandparent).where(Grandparent.active == True)
+            select(Grandparent).where(
+                Grandparent.active == True,
+                Grandparent.last_prompted_at == None,  # noqa: E711
+                Grandparent.prompt_index < SPRINT_LENGTH,
+            )
         ).all()
         gp_ids = [(gp.id, gp.name, gp.phone, gp.prompt_index, gp.language) for gp in grandparents]
 
@@ -37,32 +42,37 @@ def send_weekly_prompts() -> int:
             send_message(to_phone=phone, body=message)
             mark_prompted(gp_id)
             sent += 1
-            logger.info("Sent prompt %d/52 to %s (%s)", prompt_index + 1, name, phone)
+            logger.info("Sent sprint prompt %d/%d to %s (%s)", prompt_index + 1, SPRINT_LENGTH, name, phone)
         except Exception:
             logger.exception("Failed to send prompt to %s", name)
 
-    logger.info("Weekly prompts: sent %d", sent)
+    logger.info("Daily sprint prompts: sent %d", sent)
     return sent
 
 
+# Compatibility for existing admin scripts and integrations. New code should
+# call ``send_daily_prompts``.
+send_weekly_prompts = send_daily_prompts
+
+
 def send_reminders() -> int:
-    """Send 3-day nudge to grandparents who haven't replied yet."""
+    """Send a next-day nudge to grandparents who have not replied yet."""
     from .prompts import get_prompt
 
-    candidates = get_grandparents_needing_reminder(days=3)
+    candidates = get_grandparents_needing_reminder(days=1)
     sent = 0
 
     _REMINDER = {
         "hindi": (
-            "🙏 {name} जी, बस एक याद दिलाना चाहते थे — इस हफ़्ते का सवाल अभी भी "
+            "🙏 {name} जी, बस एक याद दिलाना चाहते थे — आज का सवाल अभी भी "
             "आपका इंतज़ार कर रहा है:\n\n_{prompt}_\n\nकोई जल्दी नहीं है। 💙"
         ),
         "english": (
-            "🙏 Hi {name}, just a gentle reminder — this week's question is still "
+            "🙏 Hi {name}, just a gentle reminder — today's question is still "
             "waiting for you:\n\n_{prompt}_\n\nNo rush at all. 💙"
         ),
         "punjabi": (
-            "🙏 {name} ਜੀ, ਬੱਸ ਇੱਕ ਯਾਦ ਦਿਵਾਉਣਾ — ਇਸ ਹਫ਼ਤੇ ਦਾ ਸਵਾਲ ਅਜੇ ਵੀ "
+            "🙏 {name} ਜੀ, ਬੱਸ ਇੱਕ ਯਾਦ ਦਿਵਾਉਣਾ — ਅੱਜ ਦਾ ਸਵਾਲ ਅਜੇ ਵੀ "
             "ਤੁਹਾਡੀ ਉਡੀਕ ਕਰ ਰਿਹਾ ਹੈ:\n\n_{prompt}_\n\nਕੋਈ ਜਲਦੀ ਨਹੀਂ। 💙"
         ),
     }
@@ -99,7 +109,7 @@ def process_pending_stories() -> int:
             for s in pending
         ]
 
-    for story_id, prompt_text, reply_text, week, gp in rows:
+    for story_id, prompt_text, reply_text, prompt_index, gp in rows:
         if not gp:
             continue
         enhanced = None
@@ -120,7 +130,7 @@ def process_pending_stories() -> int:
                 story_id=story_id,
                 story_text=text_for_video,
                 grandparent_name=gp.name,
-                week_number=week,
+                week_number=prompt_index + 1,
                 language=gp.language,
                 audio_url=audio_url if config.shotstack_api_key else None,
             )
@@ -137,52 +147,60 @@ def process_pending_stories() -> int:
 
 
 def process_pending_photos() -> int:
-    """Run the story-from-image pipeline on photo stories not yet processed.
+    """Run the story-from-image pipeline on photo stories not yet restored.
 
-    For each story with photo bytes but no photo_description yet:
+    For each story with photo bytes not yet restored/colorized:
       1. vision model reads the photo → description + story seed + questions
+         (skipped if the row already has a description — e.g. one written
+         synchronously by the webhook when the photo arrived)
       2. open models restore + colorize the photo (best-effort, optional)
       3. the elicitation questions are sent back to the grandparent on WhatsApp
+         (skipped alongside the vision step, so a seed already described never
+         gets a duplicate questions message)
     Each stage degrades independently; a missing provider never blocks the others.
     """
     processed = 0
     with open_session() as session:
         pending = session.exec(
             select(Story).where(
-                Story.photo_data != None,        # noqa: E711 (SQL IS NOT NULL)
-                Story.photo_description == "",
+                Story.photo_data != None,          # noqa: E711 (SQL IS NOT NULL)
+                Story.restored_photo_data == None, # noqa: E711 — not yet restored
             )
         ).all()
         rows = [
-            (s.id, s.photo_data, s.prompt_text, s.prompt_index,
+            (s.id, s.photo_data, s.prompt_text, s.prompt_index, s.photo_description,
              session.get(Grandparent, s.grandparent_id))
             for s in pending
         ]
 
     from .photo_story import describe_and_story, reconstruct_photo
 
-    for story_id, photo_data, prompt_text, week, gp in rows:
+    for story_id, photo_data, prompt_text, prompt_index, existing_description, gp in rows:
         if not gp or not photo_data:
             continue
 
-        result = describe_and_story(
-            photo_bytes=photo_data,
-            grandparent_name=gp.name,
-            language=gp.language,
-            prompt_text=prompt_text,
-        )
-        if result:
-            update_story_fields(
-                story_id,
-                photo_description=result.description,
-                photo_story_text=result.story_seed,
+        # Skip the vision call entirely for a seed already described (e.g. by the
+        # webhook, synchronously, at photo-receive time) — avoids a wasted Groq
+        # call and a duplicate description write / questions message.
+        if not existing_description:
+            result = describe_and_story(
+                photo_bytes=photo_data,
+                grandparent_name=gp.name,
+                language=gp.language,
+                prompt_text=prompt_text,
             )
-            logger.info("Photo story seed generated for story %d", story_id)
-            if result.questions:
-                try:
-                    send_message(gp.phone, result.questions_message(gp.name, gp.language))
-                except Exception:
-                    logger.exception("Failed to send photo questions to %s", gp.name)
+            if result:
+                update_story_fields(
+                    story_id,
+                    photo_description=result.description,
+                    photo_story_text=result.story_seed,
+                )
+                logger.info("Photo story seed generated for story %d", story_id)
+                if result.questions:
+                    try:
+                        send_message(gp.phone, result.questions_message(gp.name, gp.language))
+                    except Exception:
+                        logger.exception("Failed to send photo questions to %s", gp.name)
 
         try:
             restored, colorized = reconstruct_photo(photo_data)
@@ -206,17 +224,17 @@ def process_pending_photos() -> int:
 
 def start(run_immediately: bool = False) -> BackgroundScheduler:
     scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
-    # Monday 9:00 AM IST — send weekly prompts
+    # Every morning at 9:00 AM IST — send the next sprint prompt.
     scheduler.add_job(
-        send_weekly_prompts,
-        CronTrigger(day_of_week="mon", hour=9, minute=0),
-        id="weekly_prompts",
+        send_daily_prompts,
+        CronTrigger(hour=9, minute=0),
+        id="daily_prompts",
         replace_existing=True,
     )
-    # Thursday 9:00 AM IST — 3-day reminder check
+    # Every morning after the prompt pass — next-day reminder check.
     scheduler.add_job(
         send_reminders,
-        CronTrigger(day_of_week="thu", hour=9, minute=0),
+        CronTrigger(hour=10, minute=0),
         id="send_reminders",
         replace_existing=True,
     )
@@ -229,5 +247,5 @@ def start(run_immediately: bool = False) -> BackgroundScheduler:
     )
     scheduler.start()
     if run_immediately:
-        send_weekly_prompts()
+        send_daily_prompts()
     return scheduler

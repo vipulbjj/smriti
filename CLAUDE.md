@@ -2,7 +2,7 @@
 
 ## What this is
 
-WhatsApp-native memoir service for Indian families: grandparents receive one story prompt per week via WhatsApp, reply by text or voice note, and the year's responses compile into a printed PDF memoir book. Supports Hindi, English, and Punjabi.
+WhatsApp-native memoir service for Indian families: grandparents receive one story prompt per day for a seven-day guided chapter via WhatsApp, reply by text or voice note, and the responses compile into a shareable PDF chapter. Supports Hindi, English, and Punjabi.
 
 **This is the primary revenue project. Treat it with extra care — correctness and reliability over speed.**
 
@@ -48,14 +48,14 @@ src/smriti/
 ├── config.py       All env vars — access only via Config class, never os.environ directly
 ├── db.py           SQLModel models + DB session helpers
 ├── webhook.py      FastAPI route for inbound WhatsApp messages
-├── scheduler.py    APScheduler weekly job (Monday 9 AM IST prompts)
+├── scheduler.py    APScheduler daily prompt and reminder jobs
 ├── book.py         PDF memoir generator (ReportLab)
 ├── admin.py        CLI admin commands
 ├── admin_web.py    Web admin interface
 ├── ai.py           AI utilities
 ├── transcribe.py   Voice note transcription (OpenAI Whisper or Groq)
 ├── whatsapp.py     Twilio WhatsApp client
-├── prompts.py      52 weekly prompts in Hindi / English / Punjabi
+├── prompts.py      7 curated sprint prompts in Hindi / English / Punjabi
 ├── tts.py          Text-to-speech (ElevenLabs / gTTS)
 ├── video.py        Video generation (Shotstack)
 ├── timeline.py     Story timeline
@@ -93,8 +93,8 @@ Important files:
 
 - Vercel auto-deploys on push to `main` via `@vercel/python` build
 - Cron jobs in `vercel.json`:
-  - `/cron/send-prompts` — Mon 3:30 UTC (= Mon 9 AM IST)
-  - `/cron/send-reminders` — Thu 3:30 UTC (= Thu 9 AM IST)
+  - `/cron/send-prompts` — daily 3:30 UTC (= 9 AM IST)
+  - `/cron/send-reminders` — daily 4:30 UTC (= 10 AM IST)
   - `/cron/poll-videos` — daily noon UTC
   - `/cron/process-pending` — daily 4 AM UTC
 - Env vars (Vercel dashboard): `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `OPENAI_API_KEY`, `GROQ_API_KEY`, `ELEVENLABS_API_KEY`, `SHOTSTACK_API_KEY`, `DATABASE_URL`, `WEBHOOK_BASE_URL`, `CRON_SECRET`, `ADMIN_KEY`, `TRANSCRIPTION_PROVIDER`
@@ -119,13 +119,13 @@ SQLModel + SQLite (dev) / Postgres (prod via `DATABASE_URL`).
 
 - Twilio signature validation is on by default (`VALIDATE_TWILIO_SIGNATURE=true`). Disabling in prod is a security risk — only disable for local dev.
 - `books/` directory must exist before `generate-book` runs — it's gitignored, so create manually in prod if needed.
-- Cron times in `vercel.json` are UTC — Monday 3:30 UTC = Monday 9 AM IST.
+- Cron times in `vercel.json` are UTC — 3:30 UTC = 9 AM IST.
 - ElevenLabs voice IDs are hardcoded defaults in `config.py` — override via env vars after manual voice setup in ElevenLabs dashboard.
 
 ## Product context (for non-code tasks)
 
 - **Audience**: Indian families — adult children (30s–40s) buying the service to preserve their grandparents' stories
-- **Pricing**: WhatsApp tier ₹15,000/yr; Concierge ₹25,000; AI Vault ₹50,000–₹1,50,000
+- **Pricing**: WhatsApp tier ₹15,000 per guided chapter; Concierge ₹25,000; AI Vault ₹50,000–₹1,50,000
 - **Voice**: Warm, emotional, and deeply familial — this product touches grief, memory, and love, so every word matters. But it's also startup-forward: energetic, mission-driven, proud of what it's building. Support replies should feel personal and heartfelt, never clinical. Never make light of what families are preserving.
 - **Recently shipped**: See `TODOS.md` for deferred work
 - **What we'd never say**: TODO — any phrases or approaches to avoid?

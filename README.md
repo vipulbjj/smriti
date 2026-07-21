@@ -1,10 +1,10 @@
 # smriti (स्मृति)
 
-WhatsApp-native story collection for grandparents. One question a week, 52 weeks, one printed memoir.
+WhatsApp-native story collection for grandparents. One gentle question a day for seven days, then one shareable family chapter.
 
 ## What it does
 
-1. Every Monday 9 AM IST, sends a prompt to registered grandparents via WhatsApp.
+1. Every day at 9 AM IST, sends the next prompt to registered grandparents who are ready for one.
 2. Grandparents reply by text or voice note. Voice notes are transcribed via OpenAI Whisper.
 3. Stories accumulate in a SQLite database.
 4. Generate a formatted PDF memoir book any time with `smriti.admin generate-book`.
@@ -17,7 +17,7 @@ Languages: Hindi, English, Punjabi.
 - **SQLModel + SQLite** — zero-ops storage
 - **Twilio WhatsApp API** — messaging
 - **OpenAI Whisper** — voice note transcription
-- **APScheduler** — weekly cron (Monday 9 AM IST)
+- **APScheduler** — daily prompt and reminder jobs
 - **ReportLab** — PDF generation
 
 ## Setup
@@ -59,11 +59,11 @@ uv run pytest
 src/smriti/
   config.py      env vars
   db.py          SQLModel models + DB helpers
-  prompts.py     52 weekly prompts (Hindi / English / Punjabi)
+  prompts.py     7 curated sprint prompts (Hindi / English / Punjabi)
   whatsapp.py    Twilio client
   transcribe.py  OpenAI Whisper
   webhook.py     FastAPI route for inbound WhatsApp
-  scheduler.py   APScheduler weekly job
+  scheduler.py   APScheduler daily jobs
   book.py        PDF memoir generator
   admin.py       CLI
   main.py        FastAPI app + lifespan
@@ -73,6 +73,6 @@ src/smriti/
 
 | Tier | Price | What they get |
 |---|---|---|
-| WhatsApp | ₹15,000/yr | 52 weekly prompts, voice transcription, PDF book |
+| WhatsApp | ₹15,000 | 7-day guided chapter, voice transcription, PDF book |
 | Concierge | ₹25,000 | In-person recorded session + edited memoir |
 | AI Vault | ₹50,000–₹1,50,000 | Voice clone, photo animation, multilingual memoir |

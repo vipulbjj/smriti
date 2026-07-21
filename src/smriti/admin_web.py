@@ -12,7 +12,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from .config import config
 from .db import Family, Grandparent, Story, get_family_stories, open_session
-from .scheduler import send_weekly_prompts
+from .scheduler import send_daily_prompts
+from .program import SPRINT_LENGTH
 from sqlmodel import select, func
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ def _family_card(family: Family, gps: list, stories_by_gp: dict) -> str:
     for gp in gps:
         stories = stories_by_gp.get(gp.id, [])
         count = len(stories)
-        pct = int((count / 52) * 100)
+        pct = min(100, int((count / SPRINT_LENGTH) * 100))
         last = stories[-1].received_at.strftime("%b %d") if stories else "—"
         status_color = "#22C55E" if gp.active else "#94A3B8"
         status_label = "active" if gp.active else "complete"
@@ -46,7 +47,7 @@ def _family_card(family: Family, gps: list, stories_by_gp: dict) -> str:
           <div class="gp-right">
             <div class="prog-wrap">
               <div class="prog-bar"><div class="prog-fill" style="width:{pct}%"></div></div>
-              <span class="prog-label">{count}/52</span>
+              <span class="prog-label">{count}/{SPRINT_LENGTH}</span>
             </div>
             <div class="gp-actions">
               <button class="btn-sm btn-ghost" onclick="sendPrompt({gp.id},'{html.escape(gp.name)}',this)">Send prompt</button>
@@ -183,7 +184,7 @@ nav{{display:flex;align-items:center;justify-content:space-between;padding:1rem 
   <div class="stat"><div class="stat-val">{total_gp}</div><div class="stat-label">Grandparents</div></div>
   <div class="stat"><div class="stat-val">{active_gp}</div><div class="stat-label">Active</div></div>
   <div class="stat"><div class="stat-val">{total_stories}</div><div class="stat-label">Stories</div></div>
-  <div class="stat"><div class="stat-val">{int(total_stories/max(total_gp*52,1)*100)}%</div><div class="stat-label">Completion</div></div>
+  <div class="stat"><div class="stat-val">{int(total_stories/max(total_gp*SPRINT_LENGTH,1)*100)}%</div><div class="stat-label">Completion</div></div>
 </div>
 
 <div class="toolbar">
@@ -257,7 +258,7 @@ async function showStories(gpId, name) {{
   }}
   document.getElementById('modal-body').innerHTML = stories.map(s => `
     <div class="story-item">
-      <div class="story-week">Week ${{s.week}} — ${{s.date}}</div>
+      <div class="story-week">Day ${{s.week}} — ${{s.date}}</div>
       <div class="story-prompt">${{escHtml(s.prompt)}}</div>
       <div class="story-text">${{escHtml(s.reply)}}</div>
       ${{s.enhanced ? '<div class="story-enhanced">✨ ' + escHtml(s.enhanced) + '</div>' : ''}}
@@ -394,7 +395,7 @@ def api_send_all_prompts(request: Request):
     if not _auth(request):
         return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
     try:
-        sent = send_weekly_prompts()
+        sent = send_daily_prompts()
         return {"sent": sent}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})

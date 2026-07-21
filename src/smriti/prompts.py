@@ -1,11 +1,7 @@
-"""
-52 story prompts — one per week for a year.
-Each prompt is bilingual: Hindi first, English below.
-Designed for grandparents who may speak limited English.
-Arc: childhood → family → world events → wisdom → legacy.
-"""
+"""Seven guided story prompts, one per day, for a Smriti chapter sprint."""
 
 from .db import Language
+from .program import SPRINT_LENGTH
 
 PROMPTS_HINDI = [
     # Childhood (1–10)
@@ -146,34 +142,38 @@ PROMPTS_PUNJABI = [
 ]
 
 
-assert len(PROMPTS_HINDI) == 52, f"Expected 52 Hindi prompts, got {len(PROMPTS_HINDI)}"
-assert len(PROMPTS_ENGLISH) == 52, f"Expected 52 English prompts, got {len(PROMPTS_ENGLISH)}"
+# A chapter should cover a life in seven emotionally distinct steps rather than
+# ask a family to sustain a year-long questionnaire. The full libraries stay
+# available for future themed sprints; these are the default chapter arc.
+SPRINT_PROMPT_SOURCE_INDEXES = (0, 2, 12, 21, 31, 45, 48)
+assert len(SPRINT_PROMPT_SOURCE_INDEXES) == SPRINT_LENGTH
 
 
 def get_prompt(index: int, language: Language) -> str:
-    """Return the prompt at position index (0–51) for the given language."""
-    if index < 0 or index >= 52:
-        raise ValueError(f"Prompt index must be 0–51, got {index}")
+    """Return the prompt for sprint day ``index`` (0–6)."""
+    if index < 0 or index >= SPRINT_LENGTH:
+        raise ValueError(f"Prompt index must be 0–{SPRINT_LENGTH - 1}, got {index}")
+    source_index = SPRINT_PROMPT_SOURCE_INDEXES[index]
     if language == Language.hindi:
-        return PROMPTS_HINDI[index]
+        return PROMPTS_HINDI[source_index]
     if language == Language.punjabi:
-        return PROMPTS_PUNJABI[index]
-    return PROMPTS_ENGLISH[index]
+        return PROMPTS_PUNJABI[source_index]
+    return PROMPTS_ENGLISH[source_index]
 
 
 def format_whatsapp_prompt(index: int, language: Language, grandparent_name: str) -> str:
     """Format a prompt for WhatsApp delivery — bilingual header + question."""
-    week = index + 1
+    day = index + 1
     prompt = get_prompt(index, language)
 
     if language == Language.hindi:
-        header = f"🪔 *smriti* — सप्ताह {week}/52\nनमस्ते {grandparent_name} जी,"
+        header = f"🪔 *smriti* — दिन {day}/{SPRINT_LENGTH}\nनमस्ते {grandparent_name} जी,"
         footer = "\n\n_आप आवाज़ में या लिखकर जवाब दे सकते हैं।_"
     elif language == Language.punjabi:
-        header = f"🪔 *smriti* — ਹਫ਼ਤਾ {week}/52\nਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {grandparent_name} ਜੀ,"
+        header = f"🪔 *smriti* — ਦਿਨ {day}/{SPRINT_LENGTH}\nਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {grandparent_name} ਜੀ,"
         footer = "\n\n_ਤੁਸੀਂ ਬੋਲ ਕੇ ਜਾਂ ਲਿਖ ਕੇ ਜਵਾਬ ਦੇ ਸਕਦੇ ਹੋ।_"
     else:
-        header = f"🪔 *smriti* — Week {week}/52\nNamaste {grandparent_name},"
+        header = f"🪔 *smriti* — Day {day}/{SPRINT_LENGTH}\nNamaste {grandparent_name},"
         footer = "\n\n_You can reply by voice note or by typing your answer._"
 
     return f"{header}\n\n{prompt}{footer}"

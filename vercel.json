@@ -14,11 +14,11 @@
   "crons": [
     {
       "path": "/cron/send-prompts",
-      "schedule": "30 3 * * 1"
+      "schedule": "30 3 * * *"
     },
     {
       "path": "/cron/send-reminders",
-      "schedule": "30 3 * * 4"
+      "schedule": "30 4 * * *"
     },
     {
       "path": "/cron/poll-videos",

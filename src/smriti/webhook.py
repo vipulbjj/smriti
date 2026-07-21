@@ -37,7 +37,9 @@ from .db import (
     story_exists_by_sid,
     update_story_fields,
 )
+from .photo_story import describe_and_story
 from .prompts import get_prompt
+from .program import SPRINT_LENGTH
 from .transcribe import transcribe
 from .whatsapp import download_voice_note, send_message
 
@@ -51,9 +53,9 @@ _ACK = {
 }
 
 _COMPLETION = {
-    "hindi": "🙏 {name} जी, आपकी सभी 52 कहानियाँ पूरी हो गई हैं। आपकी किताब जल्द तैयार होगी।",
-    "english": "🙏 {name}, all 52 stories are complete. Your book will be ready soon.",
-    "punjabi": "🙏 {name} ਜੀ, ਤੁਹਾਡੀਆਂ ਸਾਰੀਆਂ 52 ਕਹਾਣੀਆਂ ਪੂਰੀਆਂ ਹੋ ਗਈਆਂ ਹਨ। ਤੁਹਾਡੀ ਕਿਤਾਬ ਜਲਦੀ ਤਿਆਰ ਹੋਵੇਗੀ।",
+    "hindi": "🙏 {name} जी, आपके सात दिनों की सभी कहानियाँ पूरी हो गई हैं। आपकी किताब जल्द तैयार होगी।",
+    "english": "🙏 {name}, all seven days of stories are complete. Your chapter is ready to become a book.",
+    "punjabi": "🙏 {name} ਜੀ, ਤੁਹਾਡੇ ਸੱਤ ਦਿਨਾਂ ਦੀਆਂ ਸਾਰੀਆਂ ਕਹਾਣੀਆਂ ਪੂਰੀਆਂ ਹੋ ਗਈਆਂ ਹਨ। ਤੁਹਾਡਾ ਅਧਿਆਇ ਕਿਤਾਬ ਬਣਨ ਲਈ ਤਿਆਰ ਹੈ।",
 }
 
 _VOICE_ERROR = {
@@ -71,43 +73,43 @@ _CONSENT_WORDS = {
 _CONSENT_REQUEST = {
     "hindi": (
         "🙏 नमस्ते {name} जी। आपका परिवार चाहता है कि आपकी जीवन की यादें हमेशा के लिए "
-        "सुरक्षित रहें। हम हर हफ़्ते एक सवाल भेजेंगे — आप आवाज़ या लिखकर जवाब दे सकते हैं।\n\n"
+        "सुरक्षित रहें। हम सात दिनों तक हर सुबह एक सवाल भेजेंगे — आप आवाज़ या लिखकर जवाब दे सकते हैं।\n\n"
         "शुरू करने के लिए *हाँ* लिखकर भेजिए।"
     ),
     "english": (
         "🙏 Namaste {name}. Your family would love to preserve your life's memories "
-        "forever. We'll send one gentle question each week — you can reply by voice or text.\n\n"
+        "forever. For seven days, we'll send one gentle question each morning — you can reply by voice or text.\n\n"
         "To begin, please reply *YES*."
     ),
     "punjabi": (
         "🙏 ਸਤ ਸ੍ਰੀ ਅਕਾਲ {name} ਜੀ। ਤੁਹਾਡਾ ਪਰਿਵਾਰ ਚਾਹੁੰਦਾ ਹੈ ਕਿ ਤੁਹਾਡੀਆਂ ਯਾਦਾਂ ਹਮੇਸ਼ਾ "
-        "ਲਈ ਸੰਭਾਲੀਆਂ ਜਾਣ। ਅਸੀਂ ਹਰ ਹਫ਼ਤੇ ਇੱਕ ਸਵਾਲ ਭੇਜਾਂਗੇ।\n\n"
+        "ਲਈ ਸੰਭਾਲੀਆਂ ਜਾਣ। ਅਸੀਂ ਸੱਤ ਦਿਨਾਂ ਤੱਕ ਹਰ ਸਵੇਰ ਇੱਕ ਸਵਾਲ ਭੇਜਾਂਗੇ।\n\n"
         "ਸ਼ੁਰੂ ਕਰਨ ਲਈ *ਹਾਂ* ਲਿਖੋ।"
     ),
 }
 
 _CONSENT_THANKS = {
-    "hindi": "🙏 शुक्रिया {name} जी! चलिए शुरू करते हैं। यह रहा इस हफ़्ते का सवाल:",
-    "english": "🙏 Thank you, {name}! Let's begin. Here is this week's question:",
-    "punjabi": "🙏 ਧੰਨਵਾਦ {name} ਜੀ! ਆਓ ਸ਼ੁਰੂ ਕਰੀਏ। ਇਹ ਰਿਹਾ ਇਸ ਹਫ਼ਤੇ ਦਾ ਸਵਾਲ:",
+    "hindi": "🙏 शुक्रिया {name} जी! चलिए शुरू करते हैं। यह रहा आज का सवाल:",
+    "english": "🙏 Thank you, {name}! Let's begin. Here is today's question:",
+    "punjabi": "🙏 ਧੰਨਵਾਦ {name} ਜੀ! ਆਓ ਸ਼ੁਰੂ ਕਰੀਏ। ਇਹ ਰਿਹਾ ਅੱਜ ਦਾ ਸਵਾਲ:",
 }
 
 _DUPLICATE = {
-    "hindi": "🙏 {name} जी, इस हफ़्ते का आपका जवाब हमें मिल चुका है। अगला सवाल जल्द आएगा।",
-    "english": "🙏 {name}, we've already saved your answer for this week. The next question is coming soon.",
-    "punjabi": "🙏 {name} ਜੀ, ਇਸ ਹਫ਼ਤੇ ਦਾ ਤੁਹਾਡਾ ਜਵਾਬ ਮਿਲ ਗਿਆ ਹੈ। ਅਗਲਾ ਸਵਾਲ ਜਲਦੀ ਆਵੇਗਾ।",
+    "hindi": "🙏 {name} जी, आज का आपका जवाब हमें मिल चुका है। अगला सवाल कल आएगा।",
+    "english": "🙏 {name}, we've already saved your answer for today. The next question arrives tomorrow.",
+    "punjabi": "🙏 {name} ਜੀ, ਅੱਜ ਦਾ ਤੁਹਾਡਾ ਜਵਾਬ ਮਿਲ ਗਿਆ ਹੈ। ਅਗਲਾ ਸਵਾਲ ਕੱਲ੍ਹ ਆਵੇਗਾ।",
 }
 
 _GRANDCHILD_NOTIFICATION = (
-    "🎉 {grandparent_name} has completed all 52 stories on smriti!\n\n"
+    "🎉 {grandparent_name} has completed their seven-day Smriti chapter!\n\n"
     "View their memory timeline: {base_url}/family/{token}\n\n"
     "Their book is ready to generate."
 )
 
 _DIGEST_NOTE = {
-    "hindi": "📖 इस हफ़्ते {name} जी ने एक यादगार बात साझा की:\n\n{digest}",
-    "english": "📖 This week {name} shared a memory:\n\n{digest}",
-    "punjabi": "📖 ਇਸ ਹਫ਼ਤੇ {name} ਜੀ ਨੇ ਇੱਕ ਯਾਦ ਸਾਂਝੀ ਕੀਤੀ:\n\n{digest}",
+    "hindi": "📖 आज {name} जी ने एक यादगार बात साझा की:\n\n{digest}",
+    "english": "📖 Today {name} shared a memory:\n\n{digest}",
+    "punjabi": "📖 ਅੱਜ {name} ਜੀ ਨੇ ਇੱਕ ਯਾਦ ਸਾਂਝੀ ਕੀਤੀ:\n\n{digest}",
 }
 
 
@@ -236,14 +238,18 @@ async def whatsapp_webhook(
                     send_message(phone, _VOICE_ERROR.get(gp.language, _VOICE_ERROR["english"]))
                     return ""
             elif "image" in content_type:
+                caption = Body.strip()
                 try:
                     photo_data = download_voice_note(MediaUrl0)  # same auth, same function
                     photo_url = f"{config.webhook_base_url}/media/photo/PENDING"  # set after save
                 except Exception:
                     logger.exception("Photo download failed for %s — storing Twilio URL as fallback", phone)
                     photo_url = MediaUrl0  # fallback: use Twilio URL even if it expires
-                if not reply_text:
-                    reply_text = "📷"  # placeholder so the story is saved
+
+                if len(caption) < 15:
+                    return _handle_photo_only(gp, phone, photo_url, photo_data, MessageSid)
+
+                # Branch A: photo + real caption — falls through to the regular save path below.
 
         # Guard: don't save trivial greetings as memoir entries
         if not reply_text or (len(reply_text.strip()) < 15 and not photo_data and not voice_note_url):
@@ -263,7 +269,7 @@ async def whatsapp_webhook(
         try:
             saved = save_story(story)
         except DuplicateStoryError:
-            logger.info("Duplicate weekly reply from %s for week %d", phone, gp.prompt_index)
+            logger.info("Duplicate sprint reply from %s for day %d", phone, gp.prompt_index)
             send_message(phone, _DUPLICATE.get(gp.language, _DUPLICATE["english"]).format(name=gp.name))
             return ""
 
@@ -302,13 +308,65 @@ async def whatsapp_webhook(
                 except Exception:
                     logger.exception("Failed to notify grandchild for family %s", family.id)
         else:
-            # Send weekly digest to grandchild
+            # Send a story digest to the grandchild
             _send_digest_background(background_tasks, saved.id, gp, prompt_text, reply_text)
 
         return ""
     except Exception:
         logger.exception("Unhandled webhook error for From=%s", From)
         return ""
+
+
+def _handle_photo_only(gp, phone: str, photo_url: str, photo_data: bytes | None,
+                        message_sid: str) -> str:
+    """Branch B: a photo with no real caption. Runs the vision pipeline synchronously
+    and saves an is_photo_seed=True row, outside the sprint prompt_index numbering.
+    Never advances the prompt, never runs the digest/completion block."""
+    prompt_text = get_prompt(gp.prompt_index, Language(gp.language))
+
+    result = None
+    if photo_data:
+        try:
+            result = describe_and_story(
+                photo_bytes=photo_data,
+                grandparent_name=gp.name,
+                language=gp.language,
+                prompt_text=prompt_text,
+            )
+        except Exception:
+            logger.exception("Vision story generation failed for %s", phone)
+            result = None
+
+    story = Story(
+        grandparent_id=gp.id,
+        prompt_index=gp.prompt_index,          # allowed now: partial index excludes seeds
+        prompt_text=prompt_text,
+        reply_text="📷",
+        photo_url=photo_url,
+        photo_data=photo_data,
+        photo_description=result.description if result else "",
+        photo_story_text=result.story_seed if result else "",
+        is_photo_seed=True,
+        twilio_message_sid=message_sid,
+    )
+    try:
+        saved = save_story(story)
+    except DuplicateStoryError:
+        logger.info("Duplicate photo-seed MessageSid=%s from %s — ignoring", message_sid, phone)
+        return ""
+
+    if photo_data and saved.id:
+        photo_url = f"{config.webhook_base_url}/media/photo/{saved.id}"
+        update_story_fields(saved.id, photo_url=photo_url)
+
+    if result:
+        send_message(phone, result.questions_message(gp.name, gp.language))
+    else:
+        # Vision unavailable/unparseable — leave photo_description empty so the daily
+        # cron still picks the seed up later. Never send the bare "📷" dead-end.
+        send_message(phone, _ACK.get(gp.language, _ACK["english"]).format(name=gp.name))
+
+    return ""
 
 
 def _send_digest_background(background_tasks: BackgroundTasks, story_id: int,

@@ -2,6 +2,7 @@ import pytest
 from sqlmodel import Session
 
 from smriti.db import (
+    DuplicateStoryError,
     Family,
     Grandparent,
     Language,
@@ -104,16 +105,56 @@ def test_story_exists_by_sid():
     assert story_exists_by_sid("") is False
 
 
-def test_advance_prompt_deactivates_at_52():
+def test_advance_prompt_deactivates_at_end_of_sprint():
     family, gp = _seed_family()
-    # Manually set to prompt 51
+    # Manually set to prompt 6, the final sprint day.
     with Session(get_engine()) as session:
         gp_db = session.get(Grandparent, gp.id)
-        gp_db.prompt_index = 51
+        gp_db.prompt_index = 6
         session.add(gp_db)
         session.commit()
 
     advance_prompt(gp.id)
     updated = get_grandparent_by_phone("+919876543211")
-    assert updated.prompt_index == 52
+    assert updated.prompt_index == 7
     assert updated.active is False
+
+
+# --- Partial unique index regression: photo seeds live outside weekly numbering ---
+
+def test_photo_seed_does_not_collide_with_weekly_reply():
+    """A photo seed (is_photo_seed=True) may share (grandparent_id, prompt_index) with
+    the weekly reply that lands there later — the partial unique index only applies
+    to weekly rows (is_photo_seed=False). A second weekly reply at the same slot must
+    still raise DuplicateStoryError."""
+    family, gp = _seed_family()
+
+    weekly = Story(
+        grandparent_id=gp.id,
+        prompt_index=0,
+        prompt_text="Where did you grow up?",
+        reply_text="I grew up in a small village near Amritsar.",
+        is_photo_seed=False,
+    )
+    seed = Story(
+        grandparent_id=gp.id,
+        prompt_index=0,
+        prompt_text="Where did you grow up?",
+        reply_text="📷",
+        is_photo_seed=True,
+    )
+
+    saved_weekly = save_story(weekly)
+    saved_seed = save_story(seed)
+    assert saved_weekly.id is not None
+    assert saved_seed.id is not None
+
+    second_weekly = Story(
+        grandparent_id=gp.id,
+        prompt_index=0,
+        prompt_text="Where did you grow up?",
+        reply_text="A second, different answer for the same week.",
+        is_photo_seed=False,
+    )
+    with pytest.raises(DuplicateStoryError):
+        save_story(second_weekly)

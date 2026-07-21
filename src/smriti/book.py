@@ -1,6 +1,6 @@
 """
 PDF memoir book generator.
-Produces a formatted PDF from a grandparent's 52 stories.
+Produces a formatted PDF from a grandparent's seven-story chapter sprint.
 """
 
 import html
@@ -226,8 +226,8 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
     story_elements.append(Paragraph("A Note", styles["chapter"]))
     story_elements.append(
         Paragraph(
-            f"This book was made with love. Over the past year, {names} answered one question "
-            f"each week — about their childhood, their family, the world they grew up in, and "
+            f"This book was made with love. Over seven days, {names} answered one question "
+            f"each day — about their childhood, their family, the world they grew up in, and "
             f"the wisdom they have carried through life. These are their words, their memories, "
             f"and their stories. They belong to this family, now and always.",
             styles["story"],
@@ -252,7 +252,7 @@ def generate_book(family_id: int, output_path: Optional[str] = None) -> str:
                 story_elements.append(Spacer(1, 0.3 * cm))
 
             story_elements.append(
-                Paragraph(f"Week {story.prompt_index + 1}", styles["week"])
+                Paragraph(f"Day {story.prompt_index + 1}", styles["week"])
             )
             story_elements.append(
                 Paragraph(f"<i>{html.escape(story.prompt_text)}</i>", styles["prompt"])

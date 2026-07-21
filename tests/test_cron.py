@@ -46,7 +46,7 @@ def test_cron_rejects_wrong_secret(client):
 
 # --- send-prompts ---
 
-@patch("smriti.cron.send_weekly_prompts", return_value=3)
+@patch("smriti.cron.send_daily_prompts", return_value=3)
 def test_send_prompts_returns_count(mock_fn, client, auth_headers):
     resp = client.get("/cron/send-prompts", headers=auth_headers)
     assert resp.status_code == 200

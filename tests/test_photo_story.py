@@ -194,16 +194,32 @@ def test_process_pending_photos_writes_fields_and_sends_questions(test_db, monke
     assert "Is this your wedding?" in sent[0][1]
 
 
-def test_process_pending_photos_skips_already_processed(test_db, monkeypatch):
+def test_process_pending_photos_regates_already_described_seed(test_db, monkeypatch):
+    """A seed already described (e.g. synchronously in the webhook) must still be
+    picked up for restore/colorize on the next cron pass, but must NOT be
+    re-described or trigger a duplicate questions message."""
     monkeypatch.setattr(config, "groq_api_key", "gsk_test")
     story_id = _seed_photo_story(test_db)
-    # Mark it already processed
+    # Mark it already described (restored_photo_data still None — not yet restored).
     from smriti.db import update_story_fields
-    update_story_fields(story_id, photo_description="already done")
+    update_story_fields(story_id, photo_description="already described")
 
+    sent = []
     from smriti import scheduler
-    with patch("smriti.photo_story.describe_and_story") as mock_describe:
+    with (
+        patch("smriti.photo_story.describe_and_story") as mock_describe,
+        patch("smriti.photo_story.reconstruct_photo", return_value=(b"restored", b"color")),
+        patch.object(scheduler, "send_message", lambda phone, msg: sent.append((phone, msg))),
+    ):
         processed = scheduler.process_pending_photos()
 
-    assert processed == 0
-    mock_describe.assert_not_called()
+    assert processed == 1
+
+    with open_session() as session:
+        story = session.get(Story, story_id)
+        assert story.restored_photo_data == b"restored"
+        assert story.colorized_photo_data == b"color"
+        assert story.photo_description == "already described"  # untouched
+
+    mock_describe.assert_not_called()  # no duplicate description write / API call
+    assert sent == []                   # no duplicate questions message

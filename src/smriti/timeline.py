@@ -8,11 +8,12 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, Response
 
 from .db import get_family_by_token, get_family_stories
+from .program import SPRINT_LENGTH
 
 router = APIRouter()
 
 
-def _story_card(week: int, prompt: str, reply: str, enhanced: str, photo_url: str,
+def _story_card(day: int, prompt: str, reply: str, enhanced: str, photo_url: str,
                 audio_url: str, video_url: str, story_id: int) -> str:
     text = enhanced or reply
     safe_text = html.escape(text) if text else "<em>No reply yet.</em>"
@@ -35,7 +36,7 @@ def _story_card(week: int, prompt: str, reply: str, enhanced: str, photo_url: st
     return f"""
     <article class="card">
       <header class="card-header">
-        <span class="week-badge">Week {week}</span>
+        <span class="week-badge">Day {day}</span>
       </header>
       <p class="card-prompt">{safe_prompt}</p>
       <div class="card-body">{safe_text}</div>
@@ -54,7 +55,7 @@ def _render_page(family_name: str, grandchild: str, pairs: list) -> str:
             total += 1
             audio_url = f"/media/audio/{story.id}"
             all_cards += _story_card(
-                week=story.prompt_index + 1,
+                day=story.prompt_index + 1,
                 prompt=story.prompt_text,
                 reply=story.reply_text,
                 enhanced=story.enhanced_text,
@@ -64,7 +65,7 @@ def _render_page(family_name: str, grandchild: str, pairs: list) -> str:
                 story_id=story.id,
             )
 
-    progress = int((total / 52) * 100)
+    progress = min(100, int((total / SPRINT_LENGTH) * 100))
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -110,7 +111,7 @@ footer{{text-align:center;padding:2.5rem 1rem 0;font-size:.78rem;color:var(--mut
 </div>
 <section class="hero">
   <h1>The memories of<br><em>{html.escape(family_name)}</em></h1>
-  <p>{total} of 52 stories collected</p>
+  <p>{total} of {SPRINT_LENGTH} stories collected</p>
   <div class="progress-wrap">
     <div class="progress-bar"><div class="progress-fill" style="width:{progress}%"></div></div>
     <div class="progress-label">{progress}%</div>

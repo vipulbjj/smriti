@@ -17,6 +17,7 @@ from .db import Family, Grandparent, Language, SubscriptionTier, get_family_stor
 from .prompts import format_whatsapp_prompt, Language as PromptLanguage
 from .whatsapp import send_message
 from .book import generate_book
+from .program import SPRINT_LENGTH
 
 
 def cmd_list():
@@ -34,7 +35,7 @@ def cmd_list():
             print(f"{f.id:<4} {f.grandchild_name:<20} {f.grandchild_phone:<16} {f.tier}")
             for gp in gps:
                 status = "active" if gp.active else "done"
-                print(f"     └─ {gp.name} ({gp.phone}) — week {gp.prompt_index}/52 [{status}]")
+                print(f"     └─ {gp.name} ({gp.phone}) — day {gp.prompt_index}/{SPRINT_LENGTH} [{status}]")
 
 
 def cmd_add_family():
@@ -78,7 +79,7 @@ def cmd_stories(family_id: int):
     for gp, stories in pairs:
         print(f"\n=== {gp.name} — {len(stories)} stories ===")
         for s in stories:
-            print(f"\n  Week {s.prompt_index + 1}: {s.prompt_text}")
+            print(f"\n  Day {s.prompt_index + 1}: {s.prompt_text}")
             print(f"  {s.reply_text[:200]}{'...' if len(s.reply_text) > 200 else ''}")
 
 
@@ -90,7 +91,7 @@ def cmd_send_prompt(grandparent_id: int):
             return
         msg = format_whatsapp_prompt(gp.prompt_index, PromptLanguage(gp.language), gp.name)
         sid = send_message(gp.phone, msg)
-        print(f"✓ Sent prompt {gp.prompt_index + 1}/52 to {gp.name}. SID: {sid}")
+        print(f"✓ Sent prompt {gp.prompt_index + 1}/{SPRINT_LENGTH} to {gp.name}. SID: {sid}")
 
 
 def cmd_onboard(grandparent_id: int):
@@ -107,31 +108,31 @@ def cmd_onboard(grandparent_id: int):
     if gp.language == "hindi":
         msg = (
             f"🪔 नमस्ते {gp.name} जी,\n\n"
-            f"मैं *smriti* हूँ। अगले 52 हफ़्तों में हर सोमवार मैं आपसे आपकी "
+            f"मैं *smriti* हूँ। अगले सात दिनों तक मैं आपसे आपकी "
             f"ज़िंदगी के बारे में एक सवाल पूछूँगा।\n\n"
             f"ये यादें एक ख़ूबसूरत किताब बनेंगी जो {family.grandchild_name} हमेशा "
             f"के लिए संजो कर रखेंगे।\n\n"
             f"जवाब लिखकर या आवाज़ में बोलकर दे सकते हैं — कोई जल्दी नहीं।\n\n"
-            f"आपका पहला सवाल सोमवार को आएगा। 🙏"
+            f"आपका पहला सवाल आज आएगा। 🙏"
         )
     elif gp.language == "punjabi":
         msg = (
             f"🪔 ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ {gp.name} ਜੀ,\n\n"
-            f"ਮੈਂ *smriti* ਹਾਂ। ਅਗਲੇ 52 ਹਫ਼ਤਿਆਂ ਵਿੱਚ ਹਰ ਸੋਮਵਾਰ ਮੈਂ ਤੁਹਾਡੇ ਤੋਂ "
+            f"ਮੈਂ *smriti* ਹਾਂ। ਅਗਲੇ ਸੱਤ ਦਿਨਾਂ ਤੱਕ ਮੈਂ ਤੁਹਾਡੇ ਤੋਂ "
             f"ਤੁਹਾਡੀ ਜ਼ਿੰਦਗੀ ਬਾਰੇ ਇੱਕ ਸਵਾਲ ਪੁੱਛਾਂਗਾ।\n\n"
             f"ਇਹ ਯਾਦਾਂ ਇੱਕ ਸੁੰਦਰ ਕਿਤਾਬ ਬਣਨਗੀਆਂ ਜੋ {family.grandchild_name} "
             f"ਹਮੇਸ਼ਾ ਲਈ ਸੰਭਾਲਣਗੇ।\n\n"
-            f"ਤੁਹਾਡਾ ਪਹਿਲਾ ਸਵਾਲ ਸੋਮਵਾਰ ਨੂੰ ਆਵੇਗਾ। 🙏"
+            f"ਤੁਹਾਡਾ ਪਹਿਲਾ ਸਵਾਲ ਅੱਜ ਆਵੇਗਾ। 🙏"
         )
     else:
         msg = (
             f"🪔 Namaste {gp.name},\n\n"
-            f"I am *smriti*. Over the next 52 weeks, every Monday I will ask you "
+            f"I am *smriti*. For the next seven days, I will ask you "
             f"one question about your life and your memories.\n\n"
             f"These stories will become a beautiful book that {family.grandchild_name} "
             f"will treasure forever.\n\n"
             f"You can reply by typing or by sending a voice note — take your time.\n\n"
-            f"Your first question arrives on Monday. 🙏"
+            f"Your first question arrives today. 🙏"
         )
 
     sid = send_message(gp.phone, msg)

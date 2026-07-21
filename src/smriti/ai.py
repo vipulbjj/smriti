@@ -2,7 +2,7 @@
 AI features powered by Groq (free tier):
   - Whisper transcription (whisper-large-v3, 2K req/day free)
   - Story enhancement (llama-3.1-8b-instant, 14.4K req/day free)
-  - Weekly digest summary for grandchild
+  - Story digest summary for grandchild
 """
 
 import io
@@ -92,7 +92,7 @@ def generate_digest(
     grandparent_name: str,
     grandchild_name: str,
 ) -> Optional[str]:
-    """Generate a short weekly digest message for the grandchild."""
+    """Generate a short story digest message for the grandchild."""
     if not config.groq_api_key:
         return None
     try:

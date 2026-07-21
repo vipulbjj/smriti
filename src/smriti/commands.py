@@ -6,7 +6,7 @@ Grandparents can send any of these (case-insensitive) at any time:
   AUDIO / आवाज़ / ਆਵਾਜ਼   → receive MP3 of their last story
   VIDEO / वीडियो / ਵੀਡੀਓ  → receive video card of their last story
   STORIES / कहानियाँ       → how many stories collected + timeline link
-  REPEAT / दोबारा / ਦੁਬਾਰਾ → resend this week's prompt
+  REPEAT / दोबारा / ਦੁਬਾਰਾ → resend today's prompt
   HELP  / मदद  / ਮਦਦ      → support message
 
 Commands are detected before regular story processing in the webhook.
@@ -20,6 +20,7 @@ from sqlmodel import desc, func, select
 from .config import config
 from .db import Grandparent, Story, Family, open_session
 from .prompts import format_whatsapp_prompt, Language
+from .program import SPRINT_LENGTH
 from .whatsapp import send_message, send_media_message
 
 logger = logging.getLogger(__name__)
@@ -49,9 +50,9 @@ _MENU = {
         "• *AUDIO* — hear your last story read aloud\n"
         "• *VIDEO* — get a story card video\n"
         "• *STORIES* — see how many memories you've shared\n"
-        "• *REPEAT* — resend this week's question\n"
+        "• *REPEAT* — resend today's question\n"
         "• *HELP* — get support\n\n"
-        "Or just reply to this week's question by typing or voice note. 🙏"
+        "Or just reply to today's question by typing or voice note. 🙏"
     ),
     "punjabi": (
         "📋 *smriti ਕਮਾਂਡਜ਼*\n\n"
@@ -73,13 +74,13 @@ _HELP = {
     ),
     "english": (
         "🙏 *smriti help*\n\n"
-        "smriti sends you one question every Monday about your life and memories. "
+        "smriti sends one gentle question each day for seven days about your life and memories. "
         "Your answers become a beautiful book your family will treasure forever.\n\n"
         f"For support, visit: {config.webhook_base_url}"
     ),
     "punjabi": (
         "🙏 *smriti ਮਦਦ*\n\n"
-        "smriti ਹਰ ਸੋਮਵਾਰ ਤੁਹਾਡੀ ਜ਼ਿੰਦਗੀ ਬਾਰੇ ਇੱਕ ਸਵਾਲ ਭੇਜਦਾ ਹੈ। "
+        "smriti ਸੱਤ ਦਿਨਾਂ ਲਈ ਹਰ ਰੋਜ਼ ਤੁਹਾਡੀ ਜ਼ਿੰਦਗੀ ਬਾਰੇ ਇੱਕ ਸਵਾਲ ਭੇਜਦਾ ਹੈ। "
         "ਤੁਹਾਡੇ ਜਵਾਬ ਇੱਕ ਸੁੰਦਰ ਕਿਤਾਬ ਬਣਦੇ ਹਨ।\n\n"
         f"ਮਦਦ ਲਈ: {config.webhook_base_url}"
     ),
@@ -87,8 +88,8 @@ _HELP = {
 
 _NO_STORIES = {
     "hindi": "अभी तक कोई कहानी नहीं है। अपना पहला जवाब भेजकर शुरुआत करें! 🙏",
-    "english": "No stories yet. Reply to this week's question to get started! 🙏",
-    "punjabi": "ਅਜੇ ਕੋਈ ਕਹਾਣੀ ਨਹੀਂ। ਇਸ ਹਫ਼ਤੇ ਦੇ ਸਵਾਲ ਦਾ ਜਵਾਬ ਦਿਓ! 🙏",
+    "english": "No stories yet. Reply to today's question to get started! 🙏",
+    "punjabi": "ਅਜੇ ਕੋਈ ਕਹਾਣੀ ਨਹੀਂ। ਅੱਜ ਦੇ ਸਵਾਲ ਦਾ ਜਵਾਬ ਦਿਓ! 🙏",
 }
 
 _VIDEO_PROCESSING = {
@@ -98,13 +99,13 @@ _VIDEO_PROCESSING = {
 }
 
 _STORIES_COUNT = {
-    "hindi": "📖 *{name} जी की यादें*\n\n{count}/52 कहानियाँ\n{bar}\n\nटाइमलाइन देखें: {url}",
-    "english": "📖 *{name}'s memories*\n\n{count}/52 stories collected\n{bar}\n\nView timeline: {url}",
-    "punjabi": "📖 *{name} ਜੀ ਦੀਆਂ ਯਾਦਾਂ*\n\n{count}/52 ਕਹਾਣੀਆਂ\n{bar}\n\nਟਾਈਮਲਾਈਨ ਦੇਖੋ: {url}",
+    "hindi": "📖 *{name} जी की यादें*\n\n{count}/7 कहानियाँ\n{bar}\n\nटाइमलाइन देखें: {url}",
+    "english": "📖 *{name}'s memories*\n\n{count}/7 stories collected\n{bar}\n\nView timeline: {url}",
+    "punjabi": "📖 *{name} ਜੀ ਦੀਆਂ ਯਾਦਾਂ*\n\n{count}/7 ਕਹਾਣੀਆਂ\n{bar}\n\nਟਾਈਮਲਾਈਨ ਦੇਖੋ: {url}",
 }
 
 
-def _progress_bar(count: int, total: int = 52) -> str:
+def _progress_bar(count: int, total: int = SPRINT_LENGTH) -> str:
     filled = int((count / total) * 10)
     return "▓" * filled + "░" * (10 - filled) + f" {count}/{total}"
 
@@ -170,10 +171,10 @@ def _send_audio_command(gp: Grandparent) -> None:
     try:
         audio_url = f"{config.webhook_base_url}/media/audio/{story.id}"
         caption = {
-            "hindi": f"🎙️ आपकी कहानी — हफ़्ता {story.prompt_index + 1}/52",
-            "english": f"🎙️ Your story — Week {story.prompt_index + 1}/52",
-            "punjabi": f"🎙️ ਤੁਹਾਡੀ ਕਹਾਣੀ — ਹਫ਼ਤਾ {story.prompt_index + 1}/52",
-        }.get(gp.language, f"Week {story.prompt_index + 1}/52")
+            "hindi": f"🎙️ आपकी कहानी — दिन {story.prompt_index + 1}/{SPRINT_LENGTH}",
+            "english": f"🎙️ Your story — Day {story.prompt_index + 1}/{SPRINT_LENGTH}",
+            "punjabi": f"🎙️ ਤੁਹਾਡੀ ਕਹਾਣੀ — ਦਿਨ {story.prompt_index + 1}/{SPRINT_LENGTH}",
+        }.get(gp.language, f"Day {story.prompt_index + 1}/{SPRINT_LENGTH}")
         send_media_message(gp.phone, caption, audio_url)
         logger.info("Audio sent to %s for story %d", gp.name, story.id)
     except Exception:
@@ -188,10 +189,10 @@ def _send_video_command(gp: Grandparent) -> None:
         return
     if story.video_url:
         caption = {
-            "hindi": f"🎬 आपकी कहानी का वीडियो — हफ़्ता {story.prompt_index + 1}/52",
-            "english": f"🎬 Your story video — Week {story.prompt_index + 1}/52",
-            "punjabi": f"🎬 ਤੁਹਾਡੀ ਕਹਾਣੀ ਦਾ ਵੀਡੀਓ — ਹਫ਼ਤਾ {story.prompt_index + 1}/52",
-        }.get(gp.language, f"Week {story.prompt_index + 1}/52")
+            "hindi": f"🎬 आपकी कहानी का वीडियो — दिन {story.prompt_index + 1}/{SPRINT_LENGTH}",
+            "english": f"🎬 Your story video — Day {story.prompt_index + 1}/{SPRINT_LENGTH}",
+            "punjabi": f"🎬 ਤੁਹਾਡੀ ਕਹਾਣੀ ਦਾ ਵੀਡੀਓ — ਦਿਨ {story.prompt_index + 1}/{SPRINT_LENGTH}",
+        }.get(gp.language, f"Day {story.prompt_index + 1}/{SPRINT_LENGTH}")
         try:
             send_media_message(gp.phone, caption, story.video_url)
         except Exception:

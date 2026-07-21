@@ -104,7 +104,7 @@ def describe_and_story(
         system = _VISION_SYSTEM.format(lang=_LANG_NAME.get(language, "English"))
         user_text = "Describe this family photograph and help the family tell its story."
         if prompt_text:
-            user_text += f" Context — this week's memory prompt was: {prompt_text}"
+            user_text += f" Context — today's memory prompt was: {prompt_text}"
 
         resp = client.chat.completions.create(
             model=config.vision_model,

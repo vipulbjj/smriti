@@ -1,8 +1,8 @@
 """
 Vercel Cron endpoints — called by Vercel's scheduler with Bearer auth.
 
-  GET /cron/send-prompts      Monday 09:00 IST (03:30 UTC Mon)
-  GET /cron/send-reminders    Thursday 09:00 IST (03:30 UTC Thu)
+  GET /cron/send-prompts      Daily 09:00 IST (03:30 UTC)
+  GET /cron/send-reminders    Daily 10:00 IST (04:30 UTC)
   GET /cron/poll-videos       Hourly — check pending Shotstack renders
   GET /cron/process-pending   Every 15 min — AI enhance + submit video jobs
 """
@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from .config import config
 from .scheduler import (
-    send_weekly_prompts,
+    send_daily_prompts,
     send_reminders,
     process_pending_stories,
     process_pending_photos,
@@ -33,7 +33,7 @@ def _check_secret(request: Request) -> None:
 @router.get("/cron/send-prompts", include_in_schema=False)
 def cron_send_prompts(request: Request):
     _check_secret(request)
-    sent = send_weekly_prompts()
+    sent = send_daily_prompts()
     logger.info("Cron send-prompts: sent %d", sent)
     return {"sent": sent}
 
@@ -81,10 +81,10 @@ def _poll_pending_videos() -> int:
             if phone:
                 try:
                     caption = {
-                        "hindi": f"🎬 आपकी कहानी का वीडियो कार्ड — हफ़्ता {prompt_index + 1}/52",
-                        "english": f"🎬 Your story card video is ready — Week {prompt_index + 1}/52",
-                        "punjabi": f"🎬 ਤੁਹਾਡੀ ਕਹਾਣੀ ਦਾ ਵੀਡੀਓ — ਹਫ਼ਤਾ {prompt_index + 1}/52",
-                    }.get(language, f"Week {prompt_index + 1}/52")
+                        "hindi": f"🎬 आपकी कहानी का वीडियो कार्ड — दिन {prompt_index + 1}/7",
+                        "english": f"🎬 Your story card video is ready — Day {prompt_index + 1}/7",
+                        "punjabi": f"🎬 ਤੁਹਾਡੀ ਕਹਾਣੀ ਦਾ ਵੀਡੀਓ — ਦਿਨ {prompt_index + 1}/7",
+                    }.get(language, f"Day {prompt_index + 1}/7")
                     send_media_message(phone, caption, url)
                     logger.info("Video sent to %s for story %d", name, story_id)
                 except Exception:

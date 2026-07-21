@@ -70,10 +70,10 @@ def submit_story_video(
                       "fill": {"color": bg_color}},
             "start": 0, "length": 20, "position": "center",
         },
-        # Week label
+        # Sprint-day label
         {
             "asset": {
-                "type": "title", "text": f"Week {week_number} · smriti",
+                "type": "title", "text": f"Day {week_number} · smriti",
                 "style": "minimal", "color": "#B45309", "size": "x-small",
                 "position": "top",
             },
@@ -183,7 +183,7 @@ def submit_memoir_video(
         bg = colors[i % len(colors)]
         text = story.get("enhanced_text") or story.get("reply_text", "")
         excerpt = _truncate(text, 200)
-        week = story.get("prompt_index", i) + 1
+        day = story.get("prompt_index", i) + 1
         length = 12.0
 
         clips += [
@@ -194,7 +194,7 @@ def submit_memoir_video(
             },
             {
                 "asset": {
-                    "type": "title", "text": f"Week {week}",
+                    "type": "title", "text": f"Day {day}",
                     "style": "minimal", "color": "#B45309", "size": "x-small", "position": "top",
                 },
                 "start": start, "length": length,
