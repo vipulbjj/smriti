@@ -81,6 +81,37 @@ def test_save_and_retrieve_story():
     assert "Amritsar" in stories[0].reply_text
 
 
+def test_get_family_stories_excludes_photo_seeds():
+    """Photo seeds are raw scaffolding, not memoir entries — they must never
+    surface in the timeline or the printed book via get_family_stories."""
+    family, gp = _seed_family()
+
+    weekly = Story(
+        grandparent_id=gp.id,
+        prompt_index=0,
+        prompt_text="Where did you grow up?",
+        reply_text="I grew up in a small village near Amritsar.",
+    )
+    save_story(weekly)
+
+    # A photo seed at the same prompt_index — allowed by the partial unique index.
+    seed = Story(
+        grandparent_id=gp.id,
+        prompt_index=0,
+        prompt_text="Where did you grow up?",
+        reply_text="📷",
+        is_photo_seed=True,
+    )
+    save_story(seed)
+
+    pairs = get_family_stories(family.id)
+    assert len(pairs) == 1
+    _, stories = pairs[0]
+    assert len(stories) == 1
+    assert stories[0].reply_text == "I grew up in a small village near Amritsar."
+    assert all(not s.is_photo_seed for s in stories)
+
+
 def test_advance_prompt():
     family, gp = _seed_family()
     assert gp.prompt_index == 0

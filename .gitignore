@@ -11,3 +11,5 @@ htmlcov/
 .coverage
 books/
 .vercel
+.DS_Store
+.pipeline/
