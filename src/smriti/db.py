@@ -250,7 +250,12 @@ def get_family_by_token(token: str) -> Optional["Family"]:
 
 
 def get_family_stories(family_id: int) -> list[tuple[Grandparent, list[Story]]]:
-    """Returns [(grandparent, [stories...])] for a family."""
+    """Returns [(grandparent, [stories...])] for a family.
+
+    Photo seeds (is_photo_seed=True) are excluded — they're raw scaffolding, not
+    memoir entries, and must never surface in the timeline or the printed book
+    until the restore pipeline promotes them into a real entry.
+    """
     with open_session() as session:
         grandparents = session.exec(
             select(Grandparent).where(Grandparent.family_id == family_id)
@@ -259,7 +264,7 @@ def get_family_stories(family_id: int) -> list[tuple[Grandparent, list[Story]]]:
         for gp in grandparents:
             stories = session.exec(
                 select(Story)
-                .where(Story.grandparent_id == gp.id)
+                .where(Story.grandparent_id == gp.id, Story.is_photo_seed == False)  # noqa: E712
                 .order_by(Story.prompt_index)
             ).all()
             result.append((gp, list(stories)))

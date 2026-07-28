@@ -349,11 +349,10 @@ def _handle_photo_only(gp, phone: str, photo_url: str, photo_data: bytes | None,
         is_photo_seed=True,
         twilio_message_sid=message_sid,
     )
-    try:
-        saved = save_story(story)
-    except DuplicateStoryError:
-        logger.info("Duplicate photo-seed MessageSid=%s from %s — ignoring", message_sid, phone)
-        return ""
+    # No DuplicateStoryError guard here: seeds are excluded from the weekly-slot
+    # unique index, so they can't collide, and re-delivery is already caught by the
+    # story_exists_by_sid check before this handler runs.
+    saved = save_story(story)
 
     if photo_data and saved.id:
         photo_url = f"{config.webhook_base_url}/media/photo/{saved.id}"

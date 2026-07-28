@@ -14,6 +14,7 @@ from smriti.db import (
     Family,
     Grandparent,
     Language,
+    Story,
     SubscriptionTier,
     get_engine,
     get_grandparent_by_phone,
@@ -21,7 +22,15 @@ from smriti.db import (
     get_family_stories,
 )
 from smriti.photo_story import PhotoStoryResult
-from sqlmodel import Session
+from sqlmodel import Session, select
+
+
+def _photo_seeds():
+    """Seeds are excluded from get_family_stories, so fetch them directly."""
+    with Session(get_engine()) as session:
+        return session.exec(
+            select(Story).where(Story.is_photo_seed == True)  # noqa: E712
+        ).all()
 
 
 @pytest.fixture(autouse=True)
@@ -311,10 +320,12 @@ def test_photo_only_saves_seed_and_sends_questions_immediately(
     )
     assert response.status_code == 200
 
-    pairs = get_family_stories(family.id)
-    _, stories = pairs[0]
-    assert len(stories) == 1
-    story = stories[0]
+    # Seed is hidden from the memoir-facing query (timeline + printed book)...
+    assert get_family_stories(family.id)[0][1] == []
+    # ...but the row exists, described, outside the weekly numbering.
+    seeds = _photo_seeds()
+    assert len(seeds) == 1
+    story = seeds[0]
     assert story.is_photo_seed is True
     assert story.photo_description == "A couple before an old car."
     assert story.photo_story_text == "Yaadon ki ek jhalak..."
@@ -352,10 +363,12 @@ def test_photo_only_vision_failure_sends_generic_ack(
     )
     assert response.status_code == 200
 
-    pairs = get_family_stories(family.id)
-    _, stories = pairs[0]
-    assert len(stories) == 1
-    story = stories[0]
+    # Seed is hidden from the memoir-facing query but exists with an empty
+    # description, so the daily cron will pick it up later.
+    assert get_family_stories(family.id)[0][1] == []
+    seeds = _photo_seeds()
+    assert len(seeds) == 1
+    story = seeds[0]
     assert story.is_photo_seed is True
     assert story.photo_description == ""
 
