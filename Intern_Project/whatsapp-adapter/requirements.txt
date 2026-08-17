@@ -1,0 +1,11 @@
+# Web framework used to build the API routes and app.
+fastapi==0.136.1
+
+# ASGI server used to run the FastAPI app locally or in production.
+uvicorn==0.46.0
+
+# Async HTTP client used for Meta WhatsApp Graph API requests.
+httpx==0.28.1
+
+# Loads local environment variables from a .env file during development.
+python-dotenv==1.2.2

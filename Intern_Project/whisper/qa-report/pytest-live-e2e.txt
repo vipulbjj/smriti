@@ -1,0 +1,13 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-8.3.4, pluggy-1.6.0 -- C:\Users\bajaj\OneDrive\Desktop\whisper\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\bajaj\OneDrive\Desktop\whisper
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collecting ... collected 3 items
+
+tests/test_e2e.py::test_live_health PASSED                               [ 33%]
+tests/test_e2e.py::test_live_transcribe_empty PASSED                     [ 66%]
+tests/test_e2e.py::test_live_transcribe_happy_path PASSED                [100%]
+
+============================== 3 passed in 1.47s ==============================

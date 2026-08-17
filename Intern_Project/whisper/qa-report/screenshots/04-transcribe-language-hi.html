@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>POST /transcribe — language hi evidence</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0f172a; color: #e2e8f0; }
+    h1 { color: #38bdf8; }
+    pre { background: #1e293b; padding: 1rem; border-radius: 8px; overflow: auto; }
+    .pass { color: #4ade80; font-weight: 600; }
+    table { border-collapse: collapse; margin-top: 1rem; }
+    td, th { border: 1px solid #334155; padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Live POST /transcribe (mocked pipeline, 2026-05-22)</h1>
+  <p class="pass">HTTP 200 — transcript and language present (FIX 3 verified)</p>
+  <table>
+    <tr><th>Field</th><th>Value</th></tr>
+    <tr><td>transcript</td><td>नमस्ते दुनिया</td></tr>
+    <tr><td>language</td><td><strong>hi</strong> (ISO 639-1, was null before fix)</td></tr>
+  </table>
+  <h2>Raw JSON</h2>
+  <pre>{
+  "transcript": "नमस्ते दुनिया",
+  "language": "hi"
+}</pre>
+  <p>Server: <code>http://127.0.0.1:7860</code> with mocked ASR (no ffmpeg/model required for contract QA).</p>
+  <p>Real Whisper + ffmpeg path blocked on this host: ffmpeg not in PATH; torch CPU wheel installed.</p>
+</body>
+</html>

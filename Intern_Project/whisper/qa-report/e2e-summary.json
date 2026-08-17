@@ -1,0 +1,75 @@
+{
+  "pytest": {
+    "exit_code": 0,
+    "passed": 4,
+    "failed": 0,
+    "skipped": 3,
+    "log": "C:\\Users\\bajaj\\OneDrive\\Desktop\\whisper\\qa-report\\pytest-results.txt"
+  },
+  "testclient_pass": 5,
+  "testclient_total": 5,
+  "fixture": "C:\\Users\\bajaj\\OneDrive\\Desktop\\whisper\\qa-report\\fixtures\\sample.wav",
+  "live_server": "up",
+  "live_e2e": [
+    {
+      "id": "E2E-001",
+      "name": "Health GET /",
+      "status": "PASS",
+      "http_status": 200,
+      "body": "{\"status\":\"ok\"}",
+      "latency_ms": 15.4
+    },
+    {
+      "id": "E2E-002",
+      "name": "Transcribe missing file",
+      "status": "PASS",
+      "http_status": 422,
+      "body": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"file\"],\"msg\":\"Field required\",\"input\":null}]}"
+    },
+    {
+      "id": "E2E-003",
+      "name": "Transcribe empty file",
+      "status": "PASS",
+      "http_status": 400,
+      "body": "{\"detail\":\"Uploaded audio file is empty\"}"
+    },
+    {
+      "id": "E2E-004",
+      "name": "Transcribe text/plain upload",
+      "status": "INFO",
+      "http_status": 500,
+      "body": "{\"detail\":\"Transcription failed: ffmpeg was not found but is required to load audio files from filename\"}"
+    },
+    {
+      "id": "E2E-005",
+      "name": "Path traversal filename",
+      "status": "PASS",
+      "http_status": 500,
+      "body": "{\"detail\":\"Transcription failed: ffmpeg was not found but is required to load audio files from filename\"}"
+    },
+    {
+      "id": "E2E-006",
+      "name": "Oversized 50MB upload",
+      "status": "INFO",
+      "http_status": 500,
+      "body": "{\"detail\":\"Transcription failed: ffmpeg was not found but is required to load audio files from filename\"}"
+    },
+    {
+      "id": "E2E-007",
+      "name": "Transcribe valid WAV",
+      "status": "FAIL",
+      "http_status": 500,
+      "body": {
+        "detail": "Transcription failed: ffmpeg was not found but is required to load audio files from filename"
+      },
+      "latency_ms": 59.7
+    },
+    {
+      "id": "E2E-008",
+      "name": "CORS preflight",
+      "status": "INFO",
+      "http_status": 405,
+      "cors_headers": {}
+    }
+  ]
+}

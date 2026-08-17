@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Whisper E2E — POST /transcribe evidence</title>
+  <style>
+    body { font-family: Consolas, "Segoe UI", monospace; margin: 2rem; background: #1e1e1e; color: #d4d4d4; }
+    h1 { color: #4ec9b0; font-size: 1.25rem; }
+    pre { background: #252526; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    .cmd { color: #ce9178; }
+    .label { color: #9cdcfe; margin-top: 1.5rem; }
+    .fail { color: #f48771; }
+    .note { color: #dcdcaa; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>POST /transcribe — Live server E2E (127.0.0.1:7860)</h1>
+  <p class="note">Expected failure: ffmpeg not installed on QA host. Model loaded; audio decode blocked by environment.</p>
+  <p class="label">Request</p>
+  <pre class="cmd">curl -X POST "http://127.0.0.1:7860/transcribe" -F "file=@qa-report/fixtures/sample.wav"</pre>
+  <p class="label">Response HTTP 500</p>
+  <pre>{
+  "detail": "Transcription failed: ffmpeg was not found but is required to load audio files from filename"
+}</pre>
+  <p class="label">Validation cases (same session)</p>
+  <pre>Empty file → 400 "Uploaded audio file is empty"
+Missing file → 422 Field required
+Health GET / → 200 {"status":"ok"}</pre>
+</body>
+</html>

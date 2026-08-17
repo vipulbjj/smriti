@@ -1,0 +1,39 @@
+# PyTorch CPU-only wheel index.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Web API framework.
+fastapi==0.136.1
+
+# ASGI server for running FastAPI.
+uvicorn==0.46.0
+
+# Async HTTP client for downloading source photos.
+httpx==0.28.1
+
+# Pillow image library for PIL image handling.
+pillow==12.2.0
+
+# CPU-only PyTorch runtime.
+torch==2.5.1+cpu
+
+# Image transforms; must match torch version.
+torchvision==0.20.1+cpu
+
+# Array processing; 1.x avoids legacy binary-extension conflicts.
+numpy==1.26.4
+
+# OpenCV for scratch/damage inpainting (headless, no GUI deps).
+opencv-python-headless==4.10.0.84
+
+# Hugging Face Hub + transformers (Swin2SR super-resolution).
+transformers==4.51.3
+huggingface-hub==0.30.2
+safetensors==0.5.3
+
+# Request body validation and data models.
+pydantic==2.13.4
+
+# DeOldify colorization (fastai 1.x stack).
+deoldify
+fastai==1.0.61
+setuptools>=65.0.0,<81.0.0

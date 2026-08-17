@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smriti — Voice Cloning</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream: #FFF8F0;
+      --cream-dark: #F5E6D3;
+      --orange: #E67E22;
+      --orange-dark: #D35400;
+      --orange-light: #FAD7A0;
+      --text: #3D2C1E;
+      --text-muted: #7D6B5A;
+      --success: #27AE60;
+      --error: #C0392B;
+      --radius: 16px;
+      --shadow: 0 4px 24px rgba(61, 44, 30, 0.10);
+    }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(160deg, var(--cream) 0%, var(--cream-dark) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      font-size: 18px;
+    }
+
+    header {
+      text-align: center;
+      padding: 2.5rem 1.5rem 1.5rem;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--orange-dark);
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      max-width: 520px;
+      margin-inline: auto;
+    }
+
+    main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 1.25rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem;
+      border: 1px solid var(--orange-light);
+    }
+
+    .card h2 {
+      font-size: 1.5rem;
+      color: var(--orange-dark);
+      margin-bottom: 0.35rem;
+    }
+
+    .card .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+    }
+
+    label {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .hint {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: 0.25rem;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      font-size: 1.1rem;
+      border: 2px solid var(--cream-dark);
+      border-radius: 10px;
+      background: var(--cream);
+      color: var(--text);
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--orange);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .field {
+      margin-bottom: 1.5rem;
+    }
+
+    .file-input-wrap {
+      position: relative;
+      border: 2px dashed var(--orange-light);
+      border-radius: 10px;
+      padding: 1.5rem;
+      text-align: center;
+      background: var(--cream);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .file-input-wrap:hover,
+    .file-input-wrap.dragover {
+      border-color: var(--orange);
+      background: #fff;
+    }
+
+    .file-input-wrap input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .file-input-label {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .file-input-label strong {
+      color: var(--orange-dark);
+    }
+
+    .file-count {
+      margin-top: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--orange);
+    }
+
+    .or-divider {
+      text-align: center;
+      margin: 1.25rem 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      position: relative;
+    }
+
+    .or-divider::before,
+    .or-divider::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 38%;
+      height: 1px;
+      background: var(--orange-light);
+    }
+
+    .or-divider::before { left: 0; }
+    .or-divider::after { right: 0; }
+
+    .record-section {
+      text-align: center;
+    }
+
+    .record-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .btn-record {
+      background: var(--orange);
+      color: #fff;
+    }
+
+    .btn-record:hover:not(:disabled) {
+      background: var(--orange-dark);
+    }
+
+    .btn-stop {
+      background: var(--error);
+      color: #fff;
+    }
+
+    .btn-stop:hover:not(:disabled) {
+      background: #922B21;
+    }
+
+    .recording-status {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-top: 1rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--error);
+    }
+
+    .recording-status.visible {
+      display: flex;
+    }
+
+    .recording-dot {
+      width: 14px;
+      height: 14px;
+      background: var(--error);
+      border-radius: 50%;
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .recording-timer {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--orange-dark);
+      margin-top: 0.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .record-count {
+      margin-top: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .clip-list-wrap {
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    .clip-list-wrap.visible {
+      display: block;
+    }
+
+    .clip-list-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .clip-list-header label {
+      margin-bottom: 0;
+    }
+
+    .clip-summary {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--orange);
+    }
+
+    .clip-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .clip-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      background: var(--cream);
+      border: 1px solid var(--cream-dark);
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+
+    .clip-item.invalid {
+      border-color: #F5B7B1;
+      background: #FDEDEC;
+    }
+
+    .clip-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .clip-name {
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .clip-meta {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+    }
+
+    .clip-source {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .clip-source.recorded {
+      background: #FDEBD0;
+      color: var(--orange-dark);
+    }
+
+    .clip-source.uploaded {
+      background: #EBF5FB;
+      color: #1A5276;
+    }
+
+    .clip-remove {
+      flex-shrink: 0;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: 2px solid var(--cream-dark);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .clip-remove:hover {
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 1rem 1.5rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, opacity 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--orange);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--orange-dark);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .spinner {
+      display: none;
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .btn.loading .spinner { display: inline-block; }
+    .btn.loading .btn-text { opacity: 0.85; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status {
+      margin-top: 1.25rem;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .status.visible { display: block; }
+
+    .status.info {
+      background: #EBF5FB;
+      color: #1A5276;
+      border: 1px solid #AED6F1;
+    }
+
+    .status.success {
+      background: #E9F7EF;
+      color: #1E8449;
+      border: 1px solid #A9DFBF;
+    }
+
+    .status.error {
+      background: #FDEDEC;
+      color: var(--error);
+      border: 1px solid #F5B7B1;
+    }
+
+    .audio-player-wrap {
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    .audio-player-wrap.visible { display: block; }
+
+    .audio-player-wrap label {
+      margin-bottom: 0.75rem;
+    }
+
+    audio {
+      width: 100%;
+      height: 48px;
+      border-radius: 8px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 480px) {
+      body { font-size: 17px; }
+      header h1 { font-size: 1.8rem; }
+      .card { padding: 1.5rem; }
+      .btn { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Smriti Voice</h1>
+    <p>Preserve a loved one's voice and hear them speak again — warm memories, brought to life.</p>
+  </header>
+
+  <main>
+    <!-- Section 1: Clone a Voice -->
+    <section class="card" id="clone-section">
+      <h2>Clone a Voice</h2>
+      <p class="subtitle">Record or upload at least 5 voice clips (6+ seconds each) to create a voice profile.</p>
+
+      <form id="clone-form">
+        <div class="field">
+          <label for="clone-grandparent-id">Grandparent ID</label>
+          <input type="text" id="clone-grandparent-id" name="grandparent_id"
+                 placeholder="e.g. dadi_ji" required autocomplete="off">
+          <p class="hint">A short name to identify this voice (no spaces).</p>
+        </div>
+
+        <div class="field">
+          <label>Voice Recordings</label>
+          <div class="file-input-wrap" id="file-drop-zone">
+            <input type="file" id="clone-files" name="files"
+                   accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm,.flac" multiple>
+            <p class="file-input-label">
+              <strong>Tap to choose files</strong><br>
+              or drag and drop audio files here
+            </p>
+            <p class="file-count" id="file-count">No files uploaded yet</p>
+          </div>
+
+          <p class="or-divider">or</p>
+
+          <div class="record-section">
+            <div class="record-controls">
+              <button type="button" class="btn btn-record" id="record-btn">
+                Record Voice
+              </button>
+              <button type="button" class="btn btn-stop" id="stop-record-btn" disabled>
+                Stop Recording
+              </button>
+            </div>
+            <div class="recording-status" id="recording-status" aria-live="polite">
+              <span class="recording-dot" aria-hidden="true"></span>
+              <span>Recording...</span>
+            </div>
+            <p class="recording-timer" id="recording-timer" hidden>0:00</p>
+            <p class="record-count" id="record-count">0 recordings captured</p>
+          </div>
+
+          <div class="clip-list-wrap" id="clip-list-wrap">
+            <div class="clip-list-header">
+              <label>Your Voice Clips</label>
+              <span class="clip-summary" id="clip-summary">0 of 5 ready</span>
+            </div>
+            <ul class="clip-list" id="clip-list"></ul>
+          </div>
+
+          <p class="hint">Minimum 5 clips total (recorded + uploaded), each at least 6 seconds long.</p>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="clone-btn" disabled>
+          <span class="spinner"></span>
+          <span class="btn-text">Clone Voice</span>
+        </button>
+      </form>
+
+      <div class="status" id="clone-status" role="alert"></div>
+    </section>
+
+    <!-- Section 2: Speak with Cloned Voice -->
+    <section class="card" id="speak-section">
+      <h2>Speak with Cloned Voice</h2>
+      <p class="subtitle">Type something and hear it in a cloned grandparent's voice.</p>
+
+      <form id="speak-form">
+        <div class="field">
+          <label for="speak-grandparent-id">Grandparent ID</label>
+          <input type="text" id="speak-grandparent-id" name="grandparent_id"
+                 placeholder="e.g. dadi_ji" required autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="speak-text">Text to Speak</label>
+          <textarea id="speak-text" name="text"
+                    placeholder="Type the message you want to hear..." required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="speak-language">Language</label>
+          <select id="speak-language" name="language">
+            <option value="hi" selected>Hindi</option>
+            <option value="en">English</option>
+            <option value="pa">Punjabi</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="speak-btn">
+          <span class="spinner"></span>
+          <span class="btn-text">Speak</span>
+        </button>
+      </form>
+
+      <div class="status" id="speak-status" role="alert"></div>
+
+      <div class="audio-player-wrap" id="audio-player-wrap">
+        <label>Generated Speech</label>
+        <audio id="audio-player" controls></audio>
+      </div>
+    </section>
+  </main>
+
+  <footer>Smriti — preserving voices, preserving memories.</footer>
+
+  <script>
+    const cloneForm = document.getElementById("clone-form");
+    const speakForm = document.getElementById("speak-form");
+    const cloneBtn = document.getElementById("clone-btn");
+    const speakBtn = document.getElementById("speak-btn");
+    const cloneStatus = document.getElementById("clone-status");
+    const speakStatus = document.getElementById("speak-status");
+    const fileInput = document.getElementById("clone-files");
+    const fileCount = document.getElementById("file-count");
+    const fileDropZone = document.getElementById("file-drop-zone");
+    const recordBtn = document.getElementById("record-btn");
+    const stopRecordBtn = document.getElementById("stop-record-btn");
+    const recordingStatus = document.getElementById("recording-status");
+    const recordingTimer = document.getElementById("recording-timer");
+    const recordCount = document.getElementById("record-count");
+    const clipListWrap = document.getElementById("clip-list-wrap");
+    const clipList = document.getElementById("clip-list");
+    const clipSummary = document.getElementById("clip-summary");
+    const audioPlayer = document.getElementById("audio-player");
+    const audioPlayerWrap = document.getElementById("audio-player-wrap");
+
+    let currentAudioUrl = null;
+    let clips = [];
+    let clipIdCounter = 0;
+    let recordedClipCounter = 0;
+
+    let mediaRecorder = null;
+    let mediaStream = null;
+    let recordedChunks = [];
+    let recordingStartTime = null;
+    let recordingTimerInterval = null;
+    let recordingElapsedSeconds = 0;
+
+    const MIN_CLIPS = 5;
+    const MIN_DURATION_SEC = 6;
+
+    function setStatus(el, message, type) {
+      el.textContent = message;
+      el.className = "status visible " + type;
+    }
+
+    function clearStatus(el) {
+      el.className = "status";
+      el.textContent = "";
+    }
+
+    function setLoading(btn, loading) {
+      btn.disabled = loading;
+      btn.classList.toggle("loading", loading);
+    }
+
+    function formatDuration(seconds) {
+      const total = Math.max(0, Math.floor(seconds));
+      const mins = Math.floor(total / 60);
+      const secs = total % 60;
+      return mins + ":" + String(secs).padStart(2, "0");
+    }
+
+    function getValidClipCount() {
+      return clips.filter(function (clip) { return clip.duration >= MIN_DURATION_SEC; }).length;
+    }
+
+    function updateClipUI() {
+      const recordedClips = clips.filter(function (c) { return c.source === "recorded"; });
+      const uploadedClips = clips.filter(function (c) { return c.source === "uploaded"; });
+      const validCount = getValidClipCount();
+
+      fileCount.textContent = uploadedClips.length === 0
+        ? "No files uploaded yet"
+        : uploadedClips.length + " file" + (uploadedClips.length === 1 ? "" : "s") + " uploaded";
+
+      recordCount.textContent = recordedClips.length + " recording" + (recordedClips.length === 1 ? "" : "s") + " captured";
+
+      if (clips.length === 0) {
+        clipListWrap.classList.remove("visible");
+        clipList.innerHTML = "";
+      } else {
+        clipListWrap.classList.add("visible");
+        clipList.innerHTML = clips.map(function (clip) {
+          const isValid = clip.duration >= MIN_DURATION_SEC;
+          const durationLabel = formatDuration(clip.duration);
+          const warning = isValid ? "" : " — too short (need 6+ sec)";
+          return (
+            '<li class="clip-item' + (isValid ? "" : " invalid") + '" data-id="' + clip.id + '">' +
+              '<div class="clip-info">' +
+                '<div class="clip-name">' + escapeHtml(clip.name) + '</div>' +
+                '<div class="clip-meta">' +
+                  durationLabel + ' · ' +
+                  '<span class="clip-source ' + clip.source + '">' + clip.source + '</span>' +
+                  warning +
+                '</div>' +
+              '</div>' +
+              '<button type="button" class="clip-remove" data-id="' + clip.id + '" aria-label="Remove ' + escapeHtml(clip.name) + '">Remove</button>' +
+            '</li>'
+          );
+        }).join("");
+      }
+
+      if (validCount < MIN_CLIPS) {
+        clipSummary.textContent = validCount + " of " + MIN_CLIPS + " ready";
+        clipSummary.style.color = "#C0392B";
+        cloneBtn.disabled = true;
+      } else {
+        clipSummary.textContent = validCount + " clips ready — you can clone!";
+        clipSummary.style.color = "#27AE60";
+        cloneBtn.disabled = false;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function getAudioDurationFromBlob(blob) {
+      return new Promise(function (resolve, reject) {
+        const audio = new Audio();
+        const url = URL.createObjectURL(blob);
+        audio.addEventListener("loadedmetadata", function () {
+          URL.revokeObjectURL(url);
+          resolve(audio.duration);
+        });
+        audio.addEventListener("error", function () {
+          URL.revokeObjectURL(url);
+          reject(new Error("Could not read audio duration"));
+        });
+        audio.src = url;
+      });
+    }
+
+    function addClip(clip) {
+      clips.push(clip);
+      updateClipUI();
+    }
+
+    function removeClip(id) {
+      clips = clips.filter(function (c) { return c.id !== id; });
+      updateClipUI();
+    }
+
+    async function processUploadedFiles(fileList) {
+      if (!fileList || fileList.length === 0) return;
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        let duration = 0;
+        try {
+          duration = await getAudioDurationFromBlob(file);
+        } catch (err) {
+          setStatus(cloneStatus, "Could not read \"" + file.name + "\". Please try a different audio file.", "error");
+          continue;
+        }
+
+        addClip({
+          id: "clip-" + (++clipIdCounter),
+          name: file.name,
+          blob: file,
+          duration: duration,
+          source: "uploaded",
+        });
+
+        if (duration < MIN_DURATION_SEC) {
+          setStatus(
+            cloneStatus,
+            "\"" + file.name + "\" is too short (" + formatDuration(duration) + "). Each clip needs at least 6 seconds.",
+            "error"
+          );
+        }
+      }
+
+      fileInput.value = "";
+    }
+
+    function startRecordingTimer() {
+      recordingElapsedSeconds = 0;
+      recordingTimer.hidden = false;
+      recordingTimer.textContent = "0:00";
+      recordingTimerInterval = setInterval(function () {
+        recordingElapsedSeconds = (Date.now() - recordingStartTime) / 1000;
+        recordingTimer.textContent = formatDuration(recordingElapsedSeconds);
+      }, 250);
+    }
+
+    function stopRecordingTimer() {
+      if (recordingTimerInterval) {
+        clearInterval(recordingTimerInterval);
+        recordingTimerInterval = null;
+      }
+    }
+
+    function resetRecordingUI() {
+      recordingStatus.classList.remove("visible");
+      recordingTimer.hidden = true;
+      recordingTimer.textContent = "0:00";
+      recordBtn.disabled = false;
+      stopRecordBtn.disabled = true;
+    }
+
+    function stopMediaStream() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(function (track) { track.stop(); });
+        mediaStream = null;
+      }
+    }
+
+    recordBtn.addEventListener("click", async function () {
+      clearStatus(cloneStatus);
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus(cloneStatus, "Your browser does not support microphone recording. Please try uploading files instead.", "error");
+        return;
+      }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        let message = "Could not access your microphone. Please check permissions and try again.";
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          message = "Microphone access was denied. Please allow microphone permission in your browser settings, then try again.";
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          message = "No microphone was found. Please connect a microphone or upload audio files instead.";
+        }
+        setStatus(cloneStatus, message, "error");
+        return;
+      }
+
+      recordedChunks = [];
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : (MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "");
+
+      try {
+        mediaRecorder = mimeType
+          ? new MediaRecorder(mediaStream, { mimeType: mimeType })
+          : new MediaRecorder(mediaStream);
+      } catch (err) {
+        stopMediaStream();
+        setStatus(cloneStatus, "Could not start recording on this device. Please try uploading files instead.", "error");
+        return;
+      }
+
+      mediaRecorder.ondataavailable = function (e) {
+        if (e.data && e.data.size > 0) {
+          recordedChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = function () {
+        stopRecordingTimer();
+        stopMediaStream();
+
+        const elapsed = recordingElapsedSeconds;
+        const blobType = mediaRecorder.mimeType || "audio/webm";
+        const blob = new Blob(recordedChunks, { type: blobType });
+
+        resetRecordingUI();
+        mediaRecorder = null;
+        recordedChunks = [];
+
+        if (elapsed < MIN_DURATION_SEC) {
+          setStatus(
+            cloneStatus,
+            "Recording too short (" + formatDuration(elapsed) + "). Please record at least 6 seconds and try again.",
+            "error"
+          );
+          return;
+        }
+
+        recordedClipCounter += 1;
+        const clipName = "recording_" + String(recordedClipCounter).padStart(3, "0") + ".webm";
+
+        addClip({
+          id: "clip-" + (++clipIdCounter),
+          name: clipName,
+          blob: blob,
+          duration: elapsed,
+          source: "recorded",
+        });
+
+        setStatus(cloneStatus, "Recording saved (" + formatDuration(elapsed) + ").", "success");
+      };
+
+      mediaRecorder.onerror = function () {
+        stopRecordingTimer();
+        stopMediaStream();
+        resetRecordingUI();
+        setStatus(cloneStatus, "Recording failed. Please try again.", "error");
+      };
+
+      recordingStartTime = Date.now();
+      mediaRecorder.start();
+      recordBtn.disabled = true;
+      stopRecordBtn.disabled = false;
+      recordingStatus.classList.add("visible");
+      startRecordingTimer();
+    });
+
+    stopRecordBtn.addEventListener("click", function () {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        stopRecordBtn.disabled = true;
+        mediaRecorder.stop();
+      }
+    });
+
+    clipList.addEventListener("click", function (e) {
+      const btn = e.target.closest(".clip-remove");
+      if (!btn) return;
+      removeClip(btn.getAttribute("data-id"));
+    });
+
+    fileInput.addEventListener("change", function () {
+      clearStatus(cloneStatus);
+      processUploadedFiles(fileInput.files);
+    });
+
+    ["dragenter", "dragover"].forEach(function (evt) {
+      fileDropZone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        fileDropZone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(function (evt) {
+      fileDropZone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        fileDropZone.classList.remove("dragover");
+      });
+    });
+
+    fileDropZone.addEventListener("drop", function (e) {
+      clearStatus(cloneStatus);
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processUploadedFiles(e.dataTransfer.files);
+      }
+    });
+
+    cloneForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearStatus(cloneStatus);
+
+      const grandparentId = document.getElementById("clone-grandparent-id").value.trim();
+      const validClips = clips.filter(function (clip) { return clip.duration >= MIN_DURATION_SEC; });
+
+      if (!grandparentId) {
+        setStatus(cloneStatus, "Please enter a Grandparent ID.", "error");
+        return;
+      }
+      if (validClips.length < MIN_CLIPS) {
+        setStatus(cloneStatus, "Please add at least 5 voice clips, each at least 6 seconds long.", "error");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("grandparent_id", grandparentId);
+      for (let i = 0; i < validClips.length; i++) {
+        const clip = validClips[i];
+        formData.append("files", clip.blob, clip.name);
+      }
+
+      setLoading(cloneBtn, true);
+      setStatus(cloneStatus, "Cloning voice — this may take a minute. Please wait...", "info");
+
+      try {
+        const response = await fetch("/upload-and-clone", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json().catch(function () { return null; });
+
+        if (!response.ok) {
+          const detail = data && data.detail
+            ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail))
+            : "Voice cloning failed. Please try again.";
+          setStatus(cloneStatus, detail, "error");
+          return;
+        }
+
+        setStatus(
+          cloneStatus,
+          "Voice cloned successfully for \"" + data.grandparent_id + "\"! You can now use Speak below.",
+          "success"
+        );
+        document.getElementById("speak-grandparent-id").value = data.grandparent_id;
+      } catch (err) {
+        setStatus(cloneStatus, "Network error — please check your connection and try again.", "error");
+      } finally {
+        setLoading(cloneBtn, false);
+        updateClipUI();
+      }
+    });
+
+    speakForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      clearStatus(speakStatus);
+      audioPlayerWrap.classList.remove("visible");
+
+      if (currentAudioUrl) {
+        URL.revokeObjectURL(currentAudioUrl);
+        currentAudioUrl = null;
+      }
+
+      const grandparentId = document.getElementById("speak-grandparent-id").value.trim();
+      const text = document.getElementById("speak-text").value.trim();
+      const language = document.getElementById("speak-language").value;
+
+      if (!grandparentId) {
+        setStatus(speakStatus, "Please enter a Grandparent ID.", "error");
+        return;
+      }
+      if (!text) {
+        setStatus(speakStatus, "Please enter some text to speak.", "error");
+        return;
+      }
+
+      setLoading(speakBtn, true);
+      setStatus(speakStatus, "Generating speech — please wait...", "info");
+
+      try {
+        const response = await fetch("/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            grandparent_id: grandparentId,
+            text: text,
+            language: language,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(function () { return null; });
+          const detail = data && data.detail
+            ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail))
+            : "Speech generation failed. Please try again.";
+          setStatus(speakStatus, detail, "error");
+          return;
+        }
+
+        const blob = await response.blob();
+        currentAudioUrl = URL.createObjectURL(blob);
+        audioPlayer.src = currentAudioUrl;
+        audioPlayerWrap.classList.add("visible");
+        setStatus(speakStatus, "Speech ready — press play to listen.", "success");
+        audioPlayer.play().catch(function () {});
+      } catch (err) {
+        setStatus(speakStatus, "Network error — please check your connection and try again.", "error");
+      } finally {
+        setLoading(speakBtn, false);
+      }
+    });
+  </script>
+</body>
+</html>

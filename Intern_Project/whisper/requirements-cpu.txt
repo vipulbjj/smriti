@@ -1,0 +1,14 @@
+# CPU-only install (Windows/Linux). Use this file to avoid accidental CUDA wheels.
+# Install: pip install -r requirements-cpu.txt
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi==0.115.5
+uvicorn==0.32.0
+python-multipart==0.0.20
+python-dotenv==1.0.1
+transformers==4.46.3
+torch==2.5.1+cpu
+accelerate==1.2.1
+groq==1.2.0
+imageio-ffmpeg==0.5.1

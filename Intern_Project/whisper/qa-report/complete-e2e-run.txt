@@ -1,0 +1,10 @@
+﻿.\.venv\Scripts\python.exe : Traceback (most recent call last):
+At C:\Users\bajaj\AppData\Local\Temp\ps-script-8662dec2-a335-4ad5-a7a9-6bcf9ed1c3e0.ps1:79 char:57
++ ... p\whisper"; .\.venv\Scripts\python.exe qa-report\run_complete_e2e.py  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\bajaj\OneDrive\Desktop\whisper\qa-report\run_complete_e2e.py", line 16, in <module>
+    import app
+ModuleNotFoundError: No module named 'app'

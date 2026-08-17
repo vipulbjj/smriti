@@ -1,0 +1,68 @@
+[
+  {
+    "id": "SUP-001",
+    "name": "GET / health",
+    "status": "PASS",
+    "http_status": 200,
+    "body": {
+      "status": "ok"
+    }
+  },
+  {
+    "id": "SUP-002",
+    "name": "POST /transcribe happy",
+    "status": "FAIL",
+    "http_status": 200,
+    "body": {
+      "transcript": "hello world",
+      "language": "en"
+    }
+  },
+  {
+    "id": "SUP-003",
+    "name": "POST empty file",
+    "status": "PASS",
+    "http_status": 400,
+    "body": {
+      "detail": "Uploaded audio file is empty"
+    }
+  },
+  {
+    "id": "SUP-004",
+    "name": "POST missing file",
+    "status": "PASS",
+    "http_status": 422,
+    "body": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "file"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "SUP-005",
+    "name": "POST path traversal name",
+    "status": "PASS",
+    "http_status": 200,
+    "body": {
+      "transcript": "hello world",
+      "language": "en"
+    }
+  },
+  {
+    "id": "SUP-006",
+    "name": "503 model not loaded",
+    "status": "PASS",
+    "http_status": 503,
+    "body": {
+      "detail": "Whisper model is not loaded"
+    }
+  }
+]

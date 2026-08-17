@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pip install -r requirements-vercel.txt",
+  "env": {
+    "VERCEL_DEPLOYMENT_MODE": "stub",
+    "RESTORE_SKIP_SD": "1"
+  }
+}

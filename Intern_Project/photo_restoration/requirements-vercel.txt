@@ -1,0 +1,5 @@
+# Minimal dependencies for the Vercel stub API (vercel_app.py).
+# Full ML stack lives in requirements.txt for Hugging Face Docker Spaces.
+fastapi==0.136.1
+httpx==0.28.1
+pydantic==2.13.4

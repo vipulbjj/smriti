@@ -1,0 +1,29 @@
+# Web framework used to build the transcription API.
+fastapi==0.115.5
+
+# ASGI server used to run the FastAPI app.
+uvicorn==0.32.0
+
+# Multipart parser required for file uploads with FastAPI.
+python-multipart==0.0.20
+
+# Load GROQ_API_KEY and other settings from a local .env file.
+python-dotenv==1.0.1
+
+# Hugging Face library used to load and run Whisper.
+transformers==4.46.3
+
+# CPU-only PyTorch (see requirements-cpu.txt for a self-contained CPU install).
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Tensor library used by Transformers for Whisper inference.
+torch==2.5.1+cpu
+
+# Hugging Face helper library for efficient model loading.
+accelerate==1.2.1
+
+# Groq API client for transcript post-processing cleanup.
+groq==1.2.0
+
+# Bundled ffmpeg binary for audio decoding when system ffmpeg is missing.
+imageio-ffmpeg==0.5.1
